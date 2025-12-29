@@ -1,17 +1,16 @@
-// 定义普通地图图层 (高德矢量图)
+// 定义普通地图图层
 const normalMap = L.tileLayer('http://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德地图'
 });
 
-// 定义卫星地图图层 (高德卫星图)
+// 定义卫星地图图层
 const satMap = L.tileLayer('https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德卫星'
 });
 
 // 初始化地图对象
-// layers: [normalMap] 表示默认显示普通地图
 const map = L.map('map', { 
     zoomControl: false,
     layers: [normalMap] 
@@ -32,70 +31,151 @@ L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 // 2. 核心逻辑与数据加载
 // ===========================================
 
-// 定义图层组，用于管理覆盖物
 const layers = { 
     spots: L.layerGroup().addTo(map), 
     borders: L.layerGroup().addTo(map) 
 };
-let geoData = null;
 
-// 读取本地 loudi.json 地理边界数据
+let geoData = null;   // 娄底数据
+let hunanData = null; // 湖南数据
+let isHunanMode = false; // 当前是否在湖南模式
+
+// 读取娄底数据
 fetch('loudi.json')
     .then(r => r.json())
     .then(d => {
         geoData = d;
         setMode('tour'); // 默认进入现代景点模式
     })
-    .catch(e => {
-        console.error("加载 loudi.json 失败", e);
-        // 如果是在 GitHub Pages 上，通常不会报错。本地直接打开可能会报错。
-        alert("⚠️ 无法加载 'loudi.json' 文件！\n\n请确保文件名全小写，且已上传到 GitHub。");
-    });
+    .catch(e => console.error("加载 loudi.json 失败", e));
+
+// 读取湖南数据 (新功能！)
+fetch('hunan.json')
+    .then(r => r.json())
+    .then(d => {
+        hunanData = d;
+    })
+    .catch(e => console.error("加载 hunan.json 失败，请确保文件已上传", e));
 
 
 // ===========================================
-// 3. 模式切换 (现代景点 vs 历史疆域)
+// 3. 自定义控件：湖南/娄底 切换按钮 (核心新功能)
 // ===========================================
 
-window.setMode = function(mode) {
-    // 移除所有 Tab 和 Panel 的激活状态
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    
-    if(mode === 'tour') {
-        // 切换到景点模式
-        document.querySelector('.tab:nth-child(1)').classList.add('active');
-        document.getElementById('view-tour').classList.add('active');
-        document.getElementById('timeline').classList.remove('show'); // 隐藏时间轴
-        renderTour(); // 渲染景点
+const ScopeControl = L.Control.extend({
+    options: { position: 'topleft' }, // 放在左上角
+
+    onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+        container.style.backgroundColor = 'white';
+        container.style.padding = '5px 10px';
+        container.style.cursor = 'pointer';
+        container.style.fontWeight = 'bold';
+        container.style.fontSize = '14px';
+        container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        
+        container.innerHTML = '🌏 湖南全省';
+        container.onclick = function() {
+            toggleRegion(this);
+        }
+        return container;
+    }
+});
+map.addControl(new ScopeControl());
+
+// 切换逻辑
+function toggleRegion(btn) {
+    if (!hunanData) {
+        alert("⚠️ 还没找到 hunan.json 文件！\n请下载湖南省的 GeoJSON 文件并上传到项目根目录。");
+        return;
+    }
+
+    if (!isHunanMode) {
+        // --- 切换到湖南模式 ---
+        isHunanMode = true;
+        btn.innerHTML = '🏠 返回娄底';
+        
+        // 1. 清除现有的娄底边界
+        layers.borders.clearLayers();
+
+        // 2. 绘制湖南边界
+        L.geoJSON(hunanData, {
+            style: f => {
+                const name = f.properties.name || "";
+                // 如果是娄底市，显示紫色高亮；其他城市显示灰色
+                if (name.includes("娄底")) {
+                    return { color: "#722ed1", weight: 2, fillColor: "#722ed1", fillOpacity: 0.4 };
+                } else {
+                    return { color: "#999", weight: 1, fillColor: "#ccc", fillOpacity: 0.1 };
+                }
+            }
+        }).addTo(layers.borders);
+
+        // 3. 飞到湖南省中心 (坐标大概在中心，缩放级别调小)
+        map.flyTo([27.5, 111.8], 7.5);
+
     } else {
-        // 切换到历史模式
-        document.querySelector('.tab:nth-child(2)').classList.add('active');
-        document.getElementById('view-hist').classList.add('active');
-        document.getElementById('timeline').classList.add('show'); // 显示时间轴
-        loadHist(5); // 默认显示现代
+        // --- 切换回娄底模式 ---
+        isHunanMode = false;
+        btn.innerHTML = '🌏 湖南全省';
+        
+        // 重新调用渲染函数，它会自动画回娄底边界并归位
+        renderTour(currentFilter, currentBtn); 
     }
 }
 
 
 // ===========================================
-// 4. 渲染现代景点 (Tour Mode)
+// 4. 模式切换 (现代景点 vs 历史疆域)
 // ===========================================
 
-// filter: 筛选关键词 (如 '新化', '高校', 'all')
-// btn: 被点击的按钮元素 (用于高亮)
+window.setMode = function(mode) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    
+    // 切换模式时，强制退出湖南模式，回到娄底视角
+    isHunanMode = false;
+    document.querySelector('.leaflet-control-custom').innerHTML = '🌏 湖南全省';
+
+    if(mode === 'tour') {
+        document.querySelector('.tab:nth-child(1)').classList.add('active');
+        document.getElementById('view-tour').classList.add('active');
+        document.getElementById('timeline').classList.remove('show');
+        renderTour();
+    } else {
+        document.querySelector('.tab:nth-child(2)').classList.add('active');
+        document.getElementById('view-hist').classList.add('active');
+        document.getElementById('timeline').classList.add('show');
+        loadHist(5);
+    }
+}
+
+
+// ===========================================
+// 5. 渲染现代景点 (Tour Mode)
+// ===========================================
+
+// 保存当前的筛选状态，以便从湖南模式切回来时能恢复
+let currentFilter = 'all'; 
+let currentBtn = null;
+
 window.renderTour = function(filter = 'all', btn) {
+    currentFilter = filter;
+    currentBtn = btn;
+
     if(btn) {
         document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
 
-    // 清空地图上的内容
+    // 注意：这里只清除边界，不要清除 layers.spots (除非我们想完全重绘)
+    // 但为了逻辑简单，我们通常清空重绘。
+    // 在湖南模式切换时，我们不动 renderTour，所以这里保持原样即可。
     layers.spots.clearLayers();
     layers.borders.clearLayers();
     document.getElementById('spotList').innerHTML = '';
 
-    // 1. 绘制淡淡的行政区划背景
+    // 绘制娄底边界 (默认)
     if(geoData) {
         L.geoJSON(geoData, {
             style: f => {
@@ -111,15 +191,12 @@ window.renderTour = function(filter = 'all', btn) {
         }).addTo(layers.borders);
     }
 
-    // 2. 遍历并渲染景点 (spots 数据来自 js/data.js)
+    // 绘制景点
     spots.forEach(s => {
-        // --- 筛选逻辑 ---
         if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
         if(filter === '学府' && (!s.tags || !s.tags.includes('学府'))) return;
-        // 如果筛选词不是 all/高校/学府，且景点区域不包含筛选词，则跳过
         if(filter !== 'all' && filter !== '高校' && filter !== '学府' && s.area.indexOf(filter) === -1) return;
 
-        // 根据区域定义颜色
         let c = "#666";
         if(s.area.includes("新化")) c="#8b5cf6";
         if(s.area.includes("双峰")) c="#3b82f6";
@@ -127,11 +204,9 @@ window.renderTour = function(filter = 'all', btn) {
         if(s.area.includes("涟源")) c="#10b981";
         if(s.area.includes("娄星")) c="#ef4444";
         
-        // --- 生成侧边栏卡片 ---
         const card = document.createElement('div');
         card.className = 'spot-card';
         card.setAttribute('data-area', s.area);
-        
         card.innerHTML = `
             <div class="card-icon" style="color:${c}">${s.icon}</div>
             <div class="card-info">
@@ -141,18 +216,13 @@ window.renderTour = function(filter = 'all', btn) {
                 </div>
                 <div class="card-desc">${s.desc}</div>
             </div>`;
-        
-        // 点击卡片飞到地图位置
         card.onclick = () => {
-            map.flyTo([s.lat, s.lng], 14); // 放大级别 14
+            map.flyTo([s.lat, s.lng], 14); 
             m.openPopup();
         };
         document.getElementById('spotList').appendChild(card);
 
-        // --- 生成地图标记 ---
         const m = L.marker([s.lat, s.lng], { draggable: false }).addTo(layers.spots);
-        
-        // 绑定弹窗内容
         m.bindPopup(`
             <div class="pop-head" style="background:${c}">${s.name}</div>
             <div class="pop-body">${s.desc}
@@ -161,56 +231,42 @@ window.renderTour = function(filter = 'all', btn) {
         `);
     });
     
-    // 如果是查看全部，重置视角
-    if(filter === 'all' || filter === '高校' || filter === '学府') {
+    // 只有在不是湖南模式的时候，才重置视角到娄底
+    if(!isHunanMode && (filter === 'all' || filter === '高校' || filter === '学府')) {
         map.setView([27.7017, 111.9963], 9);
     }
 }
 
-// 将函数暴露给全局，以便 HTML 中的 onclick 调用
 window.filterSpots = renderTour;
 
 
 // ===========================================
-// 5. 渲染历史疆域 (History Mode)
+// 6. 渲染历史疆域 (History Mode)
 // ===========================================
 
 window.loadHist = function(idx) {
-    // 切换时间轴按钮状态
     document.querySelectorAll('.t-btn').forEach((b, i) => b.classList.toggle('active', i===idx));
-    
-    // 获取历史数据 (historyEras 来自 js/data.js)
     const d = historyEras[idx];
-    
-    // 更新侧边栏文字
     document.getElementById('h-title').innerText = d.title;
     document.getElementById('h-era').innerText = d.year;
     document.getElementById('h-desc').innerHTML = d.desc;
 
-    // 清空地图
     layers.spots.clearLayers();
     layers.borders.clearLayers();
 
     if(geoData) {
         L.geoJSON(geoData, {
             style: f => {
-                // 获取地图中的名字 (如 "新化县")
                 const mapName = (f.properties.name || "").toString();
-                
-                // 查找该名字是否属于当前历史时期的某个分组
                 let g = d.groups.find(group => 
                     group.members.some(keyword => mapName.indexOf(keyword) > -1)
                 );
-                
-                // 如果匹配到，上色；否则透明
                 if(g) {
                     return { color: g.color, weight: 1, fillColor: g.color, fillOpacity: 0.6 };
                 }
                 return { opacity: 0, fillOpacity: 0 };
             }
         }).addTo(layers.borders);
-        
-        // 飞到该历史时期的中心点
         map.flyTo(d.center, d.zoom);
     }
 }
