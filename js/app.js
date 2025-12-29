@@ -49,7 +49,7 @@ fetch('loudi.json')
     })
     .catch(e => console.error("加载 loudi.json 失败", e));
 
-// 读取湖南数据 (新功能！)
+// 读取湖南数据
 fetch('hunan.json')
     .then(r => r.json())
     .then(d => {
@@ -59,7 +59,7 @@ fetch('hunan.json')
 
 
 // ===========================================
-// 3. 自定义控件：湖南/娄底 切换按钮 (核心新功能)
+// 3. 自定义控件：湖南/娄底 切换按钮 (视觉增强版)
 // ===========================================
 
 const ScopeControl = L.Control.extend({
@@ -83,7 +83,7 @@ const ScopeControl = L.Control.extend({
 });
 map.addControl(new ScopeControl());
 
-// 切换逻辑
+// 切换逻辑 (颜色加深 & 交互增强)
 function toggleRegion(btn) {
     if (!hunanData) {
         alert("⚠️ 还没找到 hunan.json 文件！\n请下载湖南省的 GeoJSON 文件并上传到项目根目录。");
@@ -102,17 +102,43 @@ function toggleRegion(btn) {
         L.geoJSON(hunanData, {
             style: f => {
                 const name = f.properties.name || "";
-                // 如果是娄底市，显示紫色高亮；其他城市显示灰色
+                
+                // 判断逻辑：娄底高亮，其他加深
                 if (name.includes("娄底")) {
-                    return { color: "#722ed1", weight: 2, fillColor: "#722ed1", fillOpacity: 0.4 };
+                    return { 
+                        color: "#722ed1",      // 边框色
+                        weight: 2,             // 边框粗细
+                        fillColor: "#722ed1",  // 填充色
+                        fillOpacity: 0.6       // 不透明度 (60%)
+                    };
                 } else {
-                    return { color: "#999", weight: 1, fillColor: "#ccc", fillOpacity: 0.1 };
+                    return { 
+                        color: "#fff",         // 白色边框
+                        weight: 1,             
+                        fillColor: "#64748b",  // 蓝灰色
+                        fillOpacity: 0.4       // 不透明度 (40%，很清晰)
+                    };
                 }
+            },
+            // 鼠标交互：悬停变色 + 显示地名
+            onEachFeature: function(feature, layer) {
+                const name = feature.properties.name;
+                // 绑定简单的文字提示
+                layer.bindTooltip(name, { sticky: true, direction: 'center', className: 'city-label' });
+                
+                // 鼠标移入加深
+                layer.on('mouseover', function() {
+                    this.setStyle({ fillOpacity: 0.8 });
+                });
+                // 鼠标移出恢复
+                layer.on('mouseout', function() {
+                    this.setStyle({ fillOpacity: name.includes("娄底") ? 0.6 : 0.4 });
+                });
             }
         }).addTo(layers.borders);
 
-        // 3. 飞到湖南省中心 (坐标大概在中心，缩放级别调小)
-        map.flyTo([27.5, 111.8], 7.5);
+        // 3. 飞到湖南省中心 (缩放级别调小，以便看清全省)
+        map.flyTo([27.5, 111.8], 7);
 
     } else {
         // --- 切换回娄底模式 ---
@@ -168,9 +194,8 @@ window.renderTour = function(filter = 'all', btn) {
         btn.classList.add('active');
     }
 
-    // 注意：这里只清除边界，不要清除 layers.spots (除非我们想完全重绘)
-    // 但为了逻辑简单，我们通常清空重绘。
-    // 在湖南模式切换时，我们不动 renderTour，所以这里保持原样即可。
+    // 每次渲染只清除边界，景点如果不动就不清除？
+    // 为了防止筛选逻辑混乱，这里还是全部重绘比较稳妥
     layers.spots.clearLayers();
     layers.borders.clearLayers();
     document.getElementById('spotList').innerHTML = '';
