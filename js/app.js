@@ -1,69 +1,52 @@
-// 定义普通地图图层
 const normalMap = L.tileLayer('http://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德地图'
 });
 
-// 定义卫星地图图层
 const satMap = L.tileLayer('https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德卫星'
 });
 
-// 初始化地图对象
 const map = L.map('map', { 
     zoomControl: false,
     layers: [normalMap] 
 }).setView([27.7017, 111.9963], 9);
 
-// 添加缩放控件（右上角）
 L.control.zoom({ position: 'topright' }).addTo(map);
 
-// 添加图层切换控件（右上角）
 const baseMaps = {
     "🗺️ 电子地图": normalMap,
     "🛰️ 卫星影像": satMap
 };
 L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
-
-// ===========================================
-// 2. 核心逻辑与数据加载
-// ===========================================
-
 const layers = { 
     spots: L.layerGroup().addTo(map), 
     borders: L.layerGroup().addTo(map) 
 };
 
-let geoData = null;   // 娄底数据
-let hunanData = null; // 湖南数据
-let isHunanMode = false; // 当前是否在湖南模式
+let geoData = null;
+let hunanData = null;
+let isHunanMode = false;
 
-// 读取娄底数据
 fetch('loudi.json')
     .then(r => r.json())
     .then(d => {
         geoData = d;
-        setMode('tour'); // 默认进入现代景点模式
+        setMode('tour');
     })
-    .catch(e => console.error("加载 loudi.json 失败", e));
+    .catch(e => console.error(e));
 
-// 读取湖南数据
 fetch('hunan.json')
     .then(r => r.json())
     .then(d => {
         hunanData = d;
     })
-    .catch(e => console.error("加载 hunan.json 失败，请确保文件已上传", e));
-
-
-// ===========================================
-// 3. 自定义控件：湖南/娄底 切换按钮 (视觉增强版)
-// ===========================================
+    .catch(e => console.error(e));
 
 const ScopeControl = L.Control.extend({
-    options: { position: 'topleft' }, // 放在左上角
+    options: { position: 'topleft' }, 
 
     onAdd: function(map) {
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
@@ -83,83 +66,68 @@ const ScopeControl = L.Control.extend({
 });
 map.addControl(new ScopeControl());
 
-// 切换逻辑 (颜色加深 & 交互增强)
 function toggleRegion(btn) {
     if (!hunanData) {
-        alert("⚠️ 还没找到 hunan.json 文件！\n请下载湖南省的 GeoJSON 文件并上传到项目根目录。");
+        alert("⚠️ 还没找到 hunan.json 文件！");
         return;
     }
 
     if (!isHunanMode) {
-        // --- 切换到湖南模式 ---
         isHunanMode = true;
         btn.innerHTML = '🏠 返回娄底';
         
-        // 1. 清除现有的娄底边界
         layers.borders.clearLayers();
 
-        // 2. 绘制湖南边界
         L.geoJSON(hunanData, {
             style: f => {
                 const name = f.properties.name || "";
                 
-                // 判断逻辑：娄底高亮，其他加深
                 if (name.includes("娄底")) {
                     return { 
-                        color: "#722ed1",      // 边框色
-                        weight: 2,             // 边框粗细
-                        fillColor: "#722ed1",  // 填充色
-                        fillOpacity: 0.6       // 不透明度 (60%)
+                        color: "#d946ef",
+                        weight: 2,             
+                        fillColor: "#d946ef",
+                        fillOpacity: 0.7
                     };
                 } else {
                     return { 
-                        color: "#fff",         // 白色边框
+                        color: "#fff",
                         weight: 1,             
-                        fillColor: "#64748b",  // 蓝灰色
-                        fillOpacity: 0.4       // 不透明度 (40%，很清晰)
+                        fillColor: "#1e293b",
+                        fillOpacity: 0.5
                     };
                 }
             },
-            // 鼠标交互：悬停变色 + 显示地名
             onEachFeature: function(feature, layer) {
                 const name = feature.properties.name;
-                // 绑定简单的文字提示
                 layer.bindTooltip(name, { sticky: true, direction: 'center', className: 'city-label' });
                 
-                // 鼠标移入加深
                 layer.on('mouseover', function() {
-                    this.setStyle({ fillOpacity: 0.8 });
+                    this.setStyle({ fillOpacity: 0.8, color: "#facc15", weight: 2 }); 
                 });
-                // 鼠标移出恢复
                 layer.on('mouseout', function() {
-                    this.setStyle({ fillOpacity: name.includes("娄底") ? 0.6 : 0.4 });
+                    this.setStyle({ 
+                        fillOpacity: name.includes("娄底") ? 0.7 : 0.5,
+                        color: name.includes("娄底") ? "#d946ef" : "#fff",
+                        weight: name.includes("娄底") ? 2 : 1
+                    });
                 });
             }
         }).addTo(layers.borders);
 
-        // 3. 飞到湖南省中心 (缩放级别调小，以便看清全省)
         map.flyTo([27.5, 111.8], 7);
 
     } else {
-        // --- 切换回娄底模式 ---
         isHunanMode = false;
         btn.innerHTML = '🌏 湖南全省';
-        
-        // 重新调用渲染函数，它会自动画回娄底边界并归位
         renderTour(currentFilter, currentBtn); 
     }
 }
-
-
-// ===========================================
-// 4. 模式切换 (现代景点 vs 历史疆域)
-// ===========================================
 
 window.setMode = function(mode) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     
-    // 切换模式时，强制退出湖南模式，回到娄底视角
     isHunanMode = false;
     document.querySelector('.leaflet-control-custom').innerHTML = '🌏 湖南全省';
 
@@ -176,12 +144,6 @@ window.setMode = function(mode) {
     }
 }
 
-
-// ===========================================
-// 5. 渲染现代景点 (Tour Mode)
-// ===========================================
-
-// 保存当前的筛选状态，以便从湖南模式切回来时能恢复
 let currentFilter = 'all'; 
 let currentBtn = null;
 
@@ -194,13 +156,10 @@ window.renderTour = function(filter = 'all', btn) {
         btn.classList.add('active');
     }
 
-    // 每次渲染只清除边界，景点如果不动就不清除？
-    // 为了防止筛选逻辑混乱，这里还是全部重绘比较稳妥
     layers.spots.clearLayers();
     layers.borders.clearLayers();
     document.getElementById('spotList').innerHTML = '';
 
-    // 绘制娄底边界 (默认)
     if(geoData) {
         L.geoJSON(geoData, {
             style: f => {
@@ -216,7 +175,6 @@ window.renderTour = function(filter = 'all', btn) {
         }).addTo(layers.borders);
     }
 
-    // 绘制景点
     spots.forEach(s => {
         if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
         if(filter === '学府' && (!s.tags || !s.tags.includes('学府'))) return;
@@ -256,18 +214,12 @@ window.renderTour = function(filter = 'all', btn) {
         `);
     });
     
-    // 只有在不是湖南模式的时候，才重置视角到娄底
     if(!isHunanMode && (filter === 'all' || filter === '高校' || filter === '学府')) {
         map.setView([27.7017, 111.9963], 9);
     }
 }
 
 window.filterSpots = renderTour;
-
-
-// ===========================================
-// 6. 渲染历史疆域 (History Mode)
-// ===========================================
 
 window.loadHist = function(idx) {
     document.querySelectorAll('.t-btn').forEach((b, i) => b.classList.toggle('active', i===idx));
