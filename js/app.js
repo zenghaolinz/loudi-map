@@ -1,6 +1,6 @@
 // ================= 1. 初始化地图 =================
 
-// 【关键修复】这里必须用 https，否则在 GitHub 上地图会是一片灰
+// 【修正1】必须使用 https，否则 GitHub Pages 上地图会是一片灰
 const normalMap = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德地图'
@@ -24,18 +24,8 @@ const baseMaps = {
 };
 L.control.layers(baseMaps).addTo(map);
 
-// 【实用工具】点击地图获取坐标
-map.on('click', function(e) {
-    const lat = e.latlng.lat.toFixed(6);
-    const lng = e.latlng.lng.toFixed(6);
-    console.log(`[${lng}, ${lat}]`);
-    L.popup()
-        .setLatLng(e.latlng)
-        .setContent(`坐标: ${lng}, ${lat}<br><span style="font-size:12px;color:#888">已输出至控制台</span>`)
-        .openOn(map);
-});
 
-// ================= 2. 全局状态与数据 =================
+// ================= 2. 全局变量与状态 =================
 
 const layers = {
     spots: L.layerGroup().addTo(map),
@@ -51,33 +41,28 @@ let appState = {
     search: ''         
 };
 
+
 // ================= 3. 数据加载 =================
 
-// 加载 loudi.json (确保文件名大小写一致！loudi.json)
+// 加载 loudi.json
 fetch('loudi.json')
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`无法找到 loudi.json (状态码: ${response.status})`);
-        }
-        return response.json();
+    .then(r => {
+        if (!r.ok) throw new Error("HTTP error " + r.status);
+        return r.json();
     })
-    .then(data => {
-        geoData = data;
-        console.log("历史地图数据加载成功");
+    .then(d => {
+        geoData = d;
+        console.log("地图数据加载成功");
     })
-    .catch(err => {
-        console.warn("历史地图加载失败:", err);
-        // 如果失败，给用户一个提示，不要默默失败
-        if(window.location.hostname.includes('github')) {
-            alert("⚠️ 提示：如果历史疆域无法显示，请检查 loudi.json 是否已上传，且文件名全是小写。");
-        }
+    .catch(e => {
+        console.warn("loudi.json 加载失败，历史疆域功能可能无法使用:", e);
     });
 
-// 立即渲染一次导览列表
+// 立即渲染一次
 updateTourView();
 
 
-// ================= 4. 核心逻辑：导览模式 =================
+// ================= 4. 核心逻辑：交互功能 =================
 
 // 切换模式 (现代 vs 历史)
 window.setMode = function(mode) {
@@ -85,7 +70,9 @@ window.setMode = function(mode) {
     
     // UI 更新
     document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-    event.target.classList.add('active');
+    // 简单的判断来激活 Tab，避免复杂的 DOM 操作
+    if(mode === 'tour') document.querySelector('.tab:nth-child(1)').classList.add('active');
+    else document.querySelector('.tab:nth-child(2)').classList.add('active');
     
     document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
     document.getElementById(`view-${mode}`).classList.add('active');
@@ -103,7 +90,7 @@ window.setMode = function(mode) {
     }
 };
 
-// 标签过滤
+// 【修正2】添加 filterSpots 函数，适配之前的 HTML
 window.filterSpots = function(category, btn) {
     appState.category = category;
     document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
@@ -111,28 +98,29 @@ window.filterSpots = function(category, btn) {
     updateTourView();
 };
 
-// 搜索功能
+// 【修正3】添加 searchSpots 函数，支持搜索
 window.searchSpots = function(text) {
     appState.search = text.toLowerCase().trim();
     updateTourView();
 };
 
-// 更新视图 (核心)
+// 综合更新视图 (核心)
 function updateTourView() {
     layers.spots.clearLayers();
+    layers.borders.clearLayers(); // 现代模式下如果有残留的边界也清除
+    
     const listEl = document.getElementById('spotList');
-    listEl.innerHTML = "";
+    if(listEl) listEl.innerHTML = "";
 
     // 筛选数据
     const filtered = spots.filter(s => {
-        // 简体字匹配
-        const matchCat = appState.category === 'all' || s.tags.includes(appState.category) || s.area === appState.category;
+        const matchCat = appState.category === 'all' || (s.tags && s.tags.includes(appState.category)) || s.area === appState.category;
         const matchSearch = s.name.toLowerCase().includes(appState.search) || 
-                            s.desc.toLowerCase().includes(appState.search);
+                            (s.desc && s.desc.toLowerCase().includes(appState.search));
         return matchCat && matchSearch;
     });
 
-    if(filtered.length === 0) {
+    if(listEl && filtered.length === 0) {
         listEl.innerHTML = `<div style="text-align:center;color:#999;padding:20px">未找到相关地点</div>`;
         return;
     }
@@ -141,26 +129,34 @@ function updateTourView() {
     const bounds = [];
 
     filtered.forEach(s => {
-        const color = getTagColor(s.tags);
+        let color = "#10b981";
+        if(s.tags && s.tags.includes("高校")) color = "#2563eb";
+        else if(s.tags && s.tags.includes("学府")) color = "#d97706";
+        else if(s.area.includes("新化")) color = "#8b5cf6";
+        else if(s.area.includes("冷水江")) color = "#f97316";
+        else if(s.area.includes("娄星")) color = "#ef4444";
         
         // 渲染列表
-        const item = document.createElement('div');
-        item.className = 'spot-card';
-        item.innerHTML = `
-            <div class="s-head">
-                <div class="s-name">${s.icon} ${s.name}</div>
-                <div class="s-tag" style="color:${color};background:${color}20">${s.tags}</div>
-            </div>
-            <p class="s-desc">${s.desc}</p>
-        `;
-        item.onclick = () => {
-            map.flyTo([s.lat, s.lng], 14);
-            marker.openPopup();
-            if(window.innerWidth < 768) {
-                document.getElementById('map').scrollIntoView({behavior: "smooth"});
-            }
-        };
-        listEl.appendChild(item);
+        if(listEl) {
+            const item = document.createElement('div');
+            item.className = 'spot-card';
+            item.innerHTML = `
+                <div class="s-head">
+                    <div class="s-name">${s.icon} ${s.name}</div>
+                    <div class="s-tag" style="color:${color};background:${color}20">${s.area}</div>
+                </div>
+                <p class="s-desc">${s.desc}</p>
+            `;
+            item.onclick = () => {
+                map.flyTo([s.lat, s.lng], 14);
+                marker.openPopup();
+                // 手机端自动滚动
+                if(window.innerWidth < 768) {
+                    document.getElementById('map').scrollIntoView({behavior: "smooth"});
+                }
+            };
+            listEl.appendChild(item);
+        }
 
         // 渲染地图标记
         const marker = L.marker([s.lat, s.lng]).addTo(layers.spots);
@@ -175,20 +171,17 @@ function updateTourView() {
         `);
     });
 
-    // 自动调整视野
+    // 【修正4】自动调整视野 (FitBounds)，解决找不到点的问题
     if (bounds.length > 0) {
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 }); 
+    } else {
+        // 如果没有点，默认回到娄底中心
+        map.setView([27.7017, 111.9963], 9);
     }
 }
 
-// 辅助函数：根据标签获取颜色 (简体字)
-function getTagColor(tag) {
-    if(tag.includes("高校")) return "#2563eb"; 
-    if(tag.includes("学府")) return "#d97706"; 
-    return "#10b981"; 
-}
 
-// ================= 5. 历史溯源模式 =================
+// ================= 5. 历史模式逻辑 =================
 
 window.loadHist = function(idx) {
     document.querySelectorAll('.t-btn').forEach((b, i) => {
@@ -196,36 +189,47 @@ window.loadHist = function(idx) {
     });
 
     const d = historyEras[idx];
-    if(!d) return;
+    if(!d) return; // 防止越界
 
-    document.getElementById('h-title').innerText = d.title;
-    document.getElementById('h-era').innerText = d.year;
-    document.getElementById('h-desc').innerHTML = d.desc;
+    const titleEl = document.getElementById('h-title');
+    const eraEl = document.getElementById('h-era');
+    const descEl = document.getElementById('h-desc');
+    
+    if(titleEl) titleEl.innerText = d.title;
+    if(eraEl) eraEl.innerText = d.year;
+    if(descEl) descEl.innerHTML = d.desc;
 
     layers.spots.clearLayers();
     layers.borders.clearLayers();
 
-    // 只有当 geoData 加载成功时才绘制
+    // 绘制历史边界
     if (geoData) {
         L.geoJSON(geoData, {
             style: f => {
                 const name = f.properties.name || "";
+                // 查找匹配的组
                 let group = d.groups.find(g => {
                     return g.members.some(m => name.includes(m));
                 });
+                
                 return {
-                    color: "#fff", weight: 1,
+                    color: "#fff",
+                    weight: 1,
                     fillColor: group ? group.color : "#ccc",
                     fillOpacity: 0.6
                 };
             },
             onEachFeature: (f, layer) => {
-                layer.bindTooltip(f.properties.name, {
-                    permanent: true, direction: 'center', className: 'map-label'
-                });
+                if(f.properties.name) {
+                     layer.bindTooltip(f.properties.name, {
+                        permanent: true, 
+                        direction: 'center',
+                        className: 'map-label' 
+                    });
+                }
             }
         }).addTo(layers.borders);
-    } 
+    }
 
     map.flyTo(d.center, d.zoom);
 };
