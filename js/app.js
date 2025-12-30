@@ -1,5 +1,7 @@
-// 1. 地图初始化：配置高德地图源
-const normalMap = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+// ===========================================
+// 1. 初始化地图
+// ===========================================
+const normalMap = L.tileLayer('http://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德地图'
 });
@@ -9,13 +11,11 @@ const satMap = L.tileLayer('https://webst02.is.autonavi.com/appmaptile?style=6&x
     attribution: '© 高德卫星'
 });
 
-// 创建地图实例
 const map = L.map('map', { 
     zoomControl: false,
-    layers: [normalMap]
+    layers: [normalMap] 
 }).setView([27.7017, 111.9963], 9);
 
-// 添加控件
 L.control.zoom({ position: 'topright' }).addTo(map);
 
 const baseMaps = {
@@ -24,87 +24,229 @@ const baseMaps = {
 };
 L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
-// 定义图层组
-const layers = {
-    spots: L.layerGroup().addTo(map),    // 存放景点标记
-    borders: L.layerGroup().addTo(map)   // 存放历史边界
+// ===========================================
+// 2. 数据与全局变量
+// ===========================================
+const layers = { 
+    spots: L.layerGroup().addTo(map), 
+    borders: L.layerGroup().addTo(map) 
 };
 
-// 2. 全局变量
-let geoData = null;       // 用于存放 loudi.json 的数据
-let currentSearch = '';   // 当前搜索关键词
+let geoData = null;
+let hunanData = null;
+let isHunanMode = false;
+let scopeControlBtn = null; // 全局保存按钮引用，方便在地图点击时调用
 
-// 3. 核心修复：主动加载 loudi.json 数据
-// 这里的 fetch 必须执行，否则 geoData 永远是空的
+// 定义湖南模式下显示的唯一标记（娄底市中心）
+const loudiCenterMarker = L.marker([27.7017, 111.9963], {
+    interactive: true // 允许点击
+}).bindTooltip("📍 娄底市 (点击进入)", { 
+    permanent: true, 
+    direction: 'right',
+    className: 'city-label'
+});
+
+// 点击这个中心标记，也能返回娄底模式
+loudiCenterMarker.on('click', () => {
+    toggleRegion();
+});
+
 fetch('loudi.json')
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("HTTP error " + response.status);
-        }
-        return response.json();
+    .then(r => r.json())
+    .then(d => {
+        geoData = d;
+        setMode('tour');
     })
-    .then(data => {
-        console.log("地理数据 loudi.json 加载成功");
-        geoData = data; // 赋值给全局变量
-    })
-    .catch(err => {
-        console.error("无法加载 loudi.json，请检查文件名或网络:", err);
-        // 如果是本地打开（非服务器环境），可能会报错，这里给个提示
-        if(window.location.protocol === 'file:') {
-            alert("注意：直接双击 HTML 文件无法读取 JSON 数据，请使用 VS Code Live Server 或上传到 GitHub Pages。");
-        }
-    });
+    .catch(e => console.error(e));
 
-// 4. 核心功能：渲染列表与地图 (现代模式)
-window.filterSpots = function(filter = 'all', btn) {
-    // 按钮样式切换
+fetch('hunan.json')
+    .then(r => r.json())
+    .then(d => {
+        hunanData = d;
+    })
+    .catch(e => console.error(e));
+
+// ===========================================
+// 3. 控件与切换逻辑 (核心修改部分)
+// ===========================================
+const ScopeControl = L.Control.extend({
+    options: { position: 'topleft' }, 
+
+    onAdd: function(map) {
+        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+        container.style.backgroundColor = 'white';
+        container.style.padding = '5px 10px';
+        container.style.cursor = 'pointer';
+        container.style.fontWeight = 'bold';
+        container.style.fontSize = '14px';
+        container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+        
+        container.innerHTML = '🌏 湖南全省';
+        
+        // 保存到全局变量，方便外部调用
+        scopeControlBtn = container;
+        
+        container.onclick = function() {
+            toggleRegion();
+        }
+        return container;
+    }
+});
+map.addControl(new ScopeControl());
+
+function toggleRegion() {
+    if (!hunanData) {
+        alert("⚠️ 还没找到 hunan.json 文件！");
+        return;
+    }
+
+    const btn = scopeControlBtn; // 获取按钮
+
+    if (!isHunanMode) {
+        // --- 进入湖南模式 ---
+        isHunanMode = true;
+        btn.innerHTML = '🏠 返回娄底';
+        
+        // 1. 清空所有内容（包括景点和边界）
+        layers.borders.clearLayers();
+        layers.spots.clearLayers(); // 隐藏所有详细景点
+        
+        // 2. 添加唯一的“娄底市”大标记
+        loudiCenterMarker.addTo(map);
+
+        // 3. 绘制湖南地图
+        L.geoJSON(hunanData, {
+            style: f => {
+                const name = f.properties.name || "";
+                if (name.includes("娄底")) {
+                    return { 
+                        color: "#d946ef",
+                        weight: 2,             
+                        fillColor: "#d946ef",
+                        fillOpacity: 0.7
+                    };
+                } else {
+                    return { 
+                        color: "#fff",
+                        weight: 1,             
+                        fillColor: "#1e293b",
+                        fillOpacity: 0.5
+                    };
+                }
+            },
+            onEachFeature: function(feature, layer) {
+                const name = feature.properties.name;
+                layer.bindTooltip(name, { sticky: true, direction: 'center', className: 'city-label' });
+                
+                // 交互效果
+                layer.on('mouseover', function() {
+                    this.setStyle({ fillOpacity: 0.8, color: "#facc15", weight: 2 }); 
+                });
+                layer.on('mouseout', function() {
+                    this.setStyle({ 
+                        fillOpacity: name.includes("娄底") ? 0.7 : 0.5,
+                        color: name.includes("娄底") ? "#d946ef" : "#fff",
+                        weight: name.includes("娄底") ? 2 : 1
+                    });
+                });
+
+                // 🌟 核心新功能：点击“娄底”板块，自动切换回娄底模式
+                if (name.includes("娄底")) {
+                    layer.on('click', function() {
+                        toggleRegion(); // 递归调用自己，触发 else 分支
+                    });
+                    // 让鼠标变成手型，提示可点击
+                    layer.options.cursor = 'pointer'; 
+                }
+            }
+        }).addTo(layers.borders);
+
+        map.flyTo([27.5, 111.8], 7);
+
+    } else {
+        // --- 返回娄底模式 ---
+        isHunanMode = false;
+        btn.innerHTML = '🌏 湖南全省';
+        
+        // 1. 移除那个大标记
+        map.removeLayer(loudiCenterMarker);
+        
+        // 2. 重新渲染景点和娄底边界
+        renderTour(currentFilter, currentBtn); 
+    }
+}
+
+// ===========================================
+// 4. 其他逻辑保持不变
+// ===========================================
+window.setMode = function(mode) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    
+    // 切换 Tab 时强制退出湖南模式
+    if (isHunanMode) toggleRegion();
+
+    if(mode === 'tour') {
+        document.querySelector('.tab:nth-child(1)').classList.add('active');
+        document.getElementById('view-tour').classList.add('active');
+        document.getElementById('timeline').classList.remove('show');
+        renderTour();
+    } else {
+        document.querySelector('.tab:nth-child(2)').classList.add('active');
+        document.getElementById('view-hist').classList.add('active');
+        document.getElementById('timeline').classList.add('show');
+        loadHist(5);
+    }
+}
+
+let currentFilter = 'all'; 
+let currentBtn = null;
+
+window.renderTour = function(filter = 'all', btn) {
+    currentFilter = filter;
+    currentBtn = btn;
+
     if(btn) {
         document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
 
-    // 清理地图
     layers.spots.clearLayers();
-    layers.borders.clearLayers(); // 现代模式下通常清除历史边界
-    
-    // 清理列表
-    const listEl = document.getElementById('spotList');
-    if(!listEl) return;
-    listEl.innerHTML = '';
+    layers.borders.clearLayers();
+    document.getElementById('spotList').innerHTML = '';
 
-    let bounds = [];
-    
-    // 确保 spots 数据存在 (来自 data.js)
-    const safeSpots = (typeof spots !== 'undefined') ? spots : [];
+    if(geoData) {
+        L.geoJSON(geoData, {
+            style: f => {
+                const n = f.properties.name || "";
+                let c = "#999";
+                if(n.includes("新化")) c="#8b5cf6";
+                else if(n.includes("冷水江")) c="#f97316";
+                else if(n.includes("涟源")) c="#10b981";
+                else if(n.includes("双峰")) c="#3b82f6";
+                else if(n.includes("娄星")) c="#ef4444";
+                return { color: c, weight: 1, fillColor: c, fillOpacity: 0.1 };
+            }
+        }).addTo(layers.borders);
+    }
 
-    safeSpots.forEach(s => {
-        // 搜索过滤
-        if (currentSearch) {
-            const searchStr = (s.name + s.desc + s.area).toLowerCase();
-            if (!searchStr.includes(currentSearch)) return;
-        }
+    spots.forEach(s => {
+        if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
+        if(filter === '学府' && (!s.tags || !s.tags.includes('学府'))) return;
+        if(filter !== 'all' && filter !== '高校' && filter !== '学府' && s.area.indexOf(filter) === -1) return;
 
-        // 标签过滤
-        let pass = false;
-        if (filter === 'all') pass = true;
-        else if (filter === '高校' && s.tags && s.tags.includes('高校')) pass = true;
-        else if (filter === '学府' && s.tags && s.tags.includes('学府')) pass = true;
-        else if (s.area.indexOf(filter) > -1) pass = true;
-
-        if (!pass) return;
-
-        // 颜色定义
-        let c = "#10b981"; // 默认绿色
-        if(s.tags && s.tags.includes("高校")) c = "#2563eb";
-        else if(s.area.includes("新化")) c = "#8b5cf6";
-        else if(s.area.includes("冷水江")) c = "#f97316";
-        else if(s.area.includes("娄星")) c = "#ef4444";
+        let c = "#666";
+        if(s.area.includes("新化")) c="#8b5cf6";
+        if(s.area.includes("双峰")) c="#3b82f6";
+        if(s.area.includes("冷水江")) c="#f97316";
+        if(s.area.includes("涟源")) c="#10b981";
+        if(s.area.includes("娄星")) c="#ef4444";
         
-        // 渲染列表卡片
         const card = document.createElement('div');
         card.className = 'spot-card';
+        card.setAttribute('data-area', s.area);
         card.innerHTML = `
-            <div class="card-icon" style="color:${c}">${s.icon || '📍'}</div>
+            <div class="card-icon" style="color:${c}">${s.icon}</div>
             <div class="card-info">
                 <div class="card-title">
                     <span>${s.name}</span>
@@ -112,144 +254,52 @@ window.filterSpots = function(filter = 'all', btn) {
                 </div>
                 <div class="card-desc">${s.desc}</div>
             </div>`;
-        
         card.onclick = () => {
-            map.flyTo([s.lat, s.lng], 15);
+            map.flyTo([s.lat, s.lng], 14); 
             m.openPopup();
-            if(window.innerWidth < 768) {
-                const mapEl = document.getElementById('map');
-                if(mapEl) mapEl.scrollIntoView({behavior: "smooth"});
-            }
         };
-        listEl.appendChild(card);
+        document.getElementById('spotList').appendChild(card);
 
-        // 渲染地图标记
-        const m = L.marker([s.lat, s.lng]).addTo(layers.spots);
-        bounds.push([s.lat, s.lng]);
-        
+        const m = L.marker([s.lat, s.lng], { draggable: false }).addTo(layers.spots);
         m.bindPopup(`
             <div class="pop-head" style="background:${c}">${s.name}</div>
-            <div class="pop-body">
-                ${s.desc}
-                <br>
-                <a href="https://uri.amap.com/marker?position=${s.lng},${s.lat}&name=${s.name}" target="_blank" style="color:${c};display:block;margin-top:8px;text-decoration:none;font-weight:bold;">
-                    🚀 导航去这里
-                </a>
+            <div class="pop-body">${s.desc}
+                <a href="https://uri.amap.com/marker?position=${s.lng},${s.lat}&name=${s.name}" target="_blank" class="pop-link" style="background:${c}">🚀 导航去这里</a>
             </div>
         `);
     });
     
-    // 自动缩放适应标记
-    if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-        // 如果没有结果，保持默认视图
-        // map.setView([27.7017, 111.9963], 9);
+    // 只有在不是湖南模式的时候，才重置视角
+    if(!isHunanMode && (filter === 'all' || filter === '高校' || filter === '学府')) {
+        map.setView([27.7017, 111.9963], 9);
     }
 }
 
-// 5. 搜索功能入口
-window.searchSpots = function(val) {
-    currentSearch = val.toLowerCase().trim();
-    window.filterSpots(); // 重新调用筛选
-};
+window.filterSpots = renderTour;
 
-// 6. 模式切换 (现代/历史)
-window.setMode = function(mode) {
-    // UI 状态切换
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    const timeline = document.getElementById('timeline');
-
-    if(mode === 'tour') {
-        // 切换到现代模式
-        const t1 = document.querySelector('.tab:nth-child(1)');
-        if(t1) t1.classList.add('active');
-        
-        const v1 = document.getElementById('view-tour');
-        if(v1) v1.classList.add('active');
-        
-        if(timeline) timeline.classList.remove('show');
-        
-        window.filterSpots(); // 重新加载景点
-    } else {
-        // 切换到历史模式
-        const t2 = document.querySelector('.tab:nth-child(2)');
-        if(t2) t2.classList.add('active');
-        
-        const v2 = document.getElementById('view-hist');
-        if(v2) v2.classList.add('active');
-        
-        if(timeline) timeline.classList.add('show');
-        
-        loadHist(0); // 默认加载第一个朝代
-    }
-}
-
-// 7. 历史模式加载逻辑
 window.loadHist = function(idx) {
     document.querySelectorAll('.t-btn').forEach((b, i) => b.classList.toggle('active', i===idx));
-    
-    // 检查 historyEras 是否存在 (来自 data.js)
-    if (typeof historyEras === 'undefined') {
-        console.error("data.js 未加载或 historyEras 未定义");
-        return;
-    }
-
     const d = historyEras[idx];
-    if(!d) return;
+    document.getElementById('h-title').innerText = d.title;
+    document.getElementById('h-era').innerText = d.year;
+    document.getElementById('h-desc').innerHTML = d.desc;
 
-    // 更新侧边栏文字
-    const hTitle = document.getElementById('h-title');
-    if(hTitle) hTitle.innerText = d.title;
-    
-    const hEra = document.getElementById('h-era');
-    if(hEra) hEra.innerText = d.year;
-    
-    const hDesc = document.getElementById('h-desc');
-    if(hDesc) hDesc.innerHTML = d.desc;
-
-    // 清除现代景点，准备绘制历史边界
     layers.spots.clearLayers();
     layers.borders.clearLayers();
 
-    // 关键点：检查 geoData 是否已加载
     if(geoData) {
         L.geoJSON(geoData, {
             style: f => {
                 const mapName = (f.properties.name || "").toString();
-                // 查找当前区块是否属于当前历史时期的某个分组
                 let g = d.groups.find(group => 
                     group.members.some(keyword => mapName.indexOf(keyword) > -1)
                 );
-                
                 if(g) {
-                    return { color: g.color, weight: 2, fillColor: g.color, fillOpacity: 0.5 };
+                    return { color: g.color, weight: 1, fillColor: g.color, fillOpacity: 0.6 };
                 }
-                // 不相关的区域设为透明
-                return { opacity: 0, fillOpacity: 0, weight: 0 };
-            },
-            onEachFeature: (feature, layer) => {
-                // 给历史区块添加点击提示
-                 const mapName = (feature.properties.name || "").toString();
-                 let g = d.groups.find(group => 
-                    group.members.some(keyword => mapName.indexOf(keyword) > -1)
-                );
-                if(g) {
-                    layer.bindPopup(`<b>${mapName}</b><br>隶属：${g.name}`);
-                }
+                return { opacity: 0, fillOpacity: 0 };
             }
         }).addTo(layers.borders);
-
-        // 飞到设定的中心点
         map.flyTo(d.center, d.zoom);
-    } else {
-        alert("地图数据 (loudi.json) 尚未加载完成，请稍后再试或检查文件是否上传。");
     }
 }
-
-// 8. 启动！
-// 页面加载完成后，默认显示现代景点
-setTimeout(() => {
-    window.filterSpots('all'); 
-}, 500);
