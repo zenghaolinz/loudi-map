@@ -7,24 +7,50 @@
 
 body { margin: 0; padding: 0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; display: flex; height: 100vh; overflow: hidden; background: #f1f5f9; }
 
-/* 侧边栏 */
+/* 侧边栏主体 */
 .sidebar {
     width: var(--sidebar-w); background: #fff; z-index: 500; display: flex; flex-direction: column;
     box-shadow: 4px 0 25px rgba(0,0,0,0.05); border-right: 1px solid #e2e8f0;
+    transition: transform 0.3s ease; /* 增加过渡动画 */
+    position: relative; /* 为 toggle 按钮定位 */
 }
 
-/* 顶部 Header 改建 */
-.header { padding: 20px 24px; border-bottom: 1px solid #f1f5f9; background: #fff; transition: all 0.3s ease; }
+/* 侧边栏收起状态 (桌面端向左平移) */
+.sidebar.collapsed {
+    transform: translateX(-100%);
+}
+
+/* 收缩/展开按钮 */
+.sidebar-toggle {
+    position: absolute;
+    right: -24px; /* 悬挂在右侧外部 */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 60px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.05);
+    color: #64748b;
+    font-size: 12px;
+    z-index: 1000;
+}
+.sidebar-toggle:hover { background: #f8fafc; color: var(--primary); }
+
+/* 按钮图标逻辑 (CSS 箭头) */
+.sidebar-toggle::after { content: '◀'; }
+.sidebar.collapsed .sidebar-toggle::after { content: '▶'; }
+
+/* 顶部 Header */
+.header { padding: 20px 24px; border-bottom: 1px solid #f1f5f9; background: #fff; }
 .header-top { display: flex; justify-content: space-between; align-items: center; }
 .title { font-size: 22px; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.5px; }
-.toggle-btn { cursor: pointer; padding: 5px; color: #94a3b8; font-size: 14px; transition: transform 0.3s; }
-.toggle-btn:hover { color: var(--primary); }
-
-/* 折叠状态样式 */
-.header.collapsed .header-content-wrapper { display: none; }
-.header.collapsed { padding: 10px 24px; }
-.header.collapsed .toggle-btn { transform: rotate(180deg); }
-
 .subtitle { font-size: 13px; color: #64748b; margin: 5px 0 15px 0; font-weight: 500; letter-spacing: 1px; }
 
 /* 模式切换 */
@@ -49,7 +75,7 @@ body { margin: 0; padding: 0; font-family: -apple-system, "PingFang SC", "Micros
 }
 #searchInput:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 
-/* 列表卡片 (核心修改：支持图片布局) */
+/* 列表卡片 */
 .spot-card {
     background: #fff; border-radius: 16px; padding: 12px; margin-bottom: 16px;
     border: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s;
@@ -66,15 +92,12 @@ body { margin: 0; padding: 0; font-family: -apple-system, "PingFang SC", "Micros
 .spot-card[data-area="涟源"]::before { background: #10b981; }
 .spot-card[data-area="娄星"]::before { background: #ef4444; }
 
-/* 新增：图片样式 */
+/* 图片样式 */
 .card-img { 
     width: 80px; height: 80px; border-radius: 8px; object-fit: cover; 
     margin-right: 16px; flex-shrink: 0; background: #f1f5f9; border: 1px solid #e2e8f0;
 }
-
 .card-info { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 80px; }
-
-/* 标题样式：可点击 */
 .card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .card-name { 
     font-size: 16px; font-weight: 800; color: #1e293b; 
@@ -82,11 +105,11 @@ body { margin: 0; padding: 0; font-family: -apple-system, "PingFang SC", "Micros
     transition: color 0.2s;
 }
 .card-name:hover { color: var(--primary); text-decoration-color: var(--primary); }
-.card-name::after { content: ' 🔗'; font-size: 12px; opacity: 0.5; font-weight: normal; } /* 百科提示图标 */
+.card-name::after { content: ' 🔗'; font-size: 12px; opacity: 0.5; font-weight: normal; } 
 
 .card-area { font-size: 11px; padding: 2px 6px; background: #f0f0f0; border-radius: 4px; color: #888; }
 .card-desc { font-size: 13px; color: #64748b; line-height: 1.5; 
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; /* 限制2行文字 */
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; 
 }
 
 /* 筛选器 */
@@ -128,9 +151,36 @@ body { margin: 0; padding: 0; font-family: -apple-system, "PingFang SC", "Micros
 .pop-body { padding: 15px; font-size: 13px; color: #334155; line-height: 1.6; }
 .pop-link { display: block; margin-top: 10px; background: #10b981; color: #fff; text-align: center; padding: 8px; border-radius: 6px; text-decoration: none; font-weight: bold; }
 
+/* 响应式调整 */
 @media (max-width: 768px) { 
     body { flex-direction: column-reverse; } 
-    .sidebar { width: 100%; height: 40%; } 
+    /* 移动端侧边栏在底部 */
+    .sidebar { width: 100%; height: 40%; border-right: none; border-top: 1px solid #e2e8f0; } 
     .map-container { height: 60%; }
+
+    /* 移动端收起逻辑：向下收起 */
+    .sidebar.collapsed {
+        transform: translateY(calc(100% - 30px)); /* 保留一小条或者完全隐藏 */
+        transform: translateY(100%);
+    }
+
+    /* 移动端按钮：位于顶部中心 */
+    .sidebar-toggle {
+        right: auto;
+        left: 50%;
+        top: -24px;
+        width: 60px;
+        height: 24px;
+        border-left: 1px solid #e2e8f0;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        transform: translateX(-50%);
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+    }
+    
+    /* 移动端图标方向 */
+    .sidebar-toggle::after { content: '▼'; }
+    .sidebar.collapsed .sidebar-toggle::after { content: '▲'; }
 }
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

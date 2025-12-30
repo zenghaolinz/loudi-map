@@ -1,5 +1,5 @@
 // ===========================================
-// 1. 初始化地图 (已修改为 HTTPS)
+// 1. 初始化地图 (HTTPS)
 // ===========================================
 const normalMap = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
@@ -146,7 +146,7 @@ function toggleRegion() {
 }
 
 // ===========================================
-// 4. 搜索与渲染逻辑 (核心修改部分)
+// 4. 搜索与渲染逻辑
 // ===========================================
 
 window.setMode = function(mode) {
@@ -179,18 +179,10 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
     renderTour(currentFilter, currentBtn, e.target.value);
 });
 
-// 新增：侧边栏头部折叠功能
-window.toggleHeader = function() {
-    const header = document.getElementById('sidebarHeader');
-    const btn = header.querySelector('.toggle-btn');
-    header.classList.toggle('collapsed');
-    
-    // 改变箭头方向 (通过 CSS rotate 也可以，这里也可以改字)
-    if(header.classList.contains('collapsed')) {
-        btn.innerHTML = '🔽';
-    } else {
-        btn.innerHTML = '🔼';
-    }
+// 新增：侧边栏整体收起功能
+window.toggleSidebar = function() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('collapsed');
 }
 
 // 核心渲染函数
@@ -252,11 +244,8 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         card.className = 'spot-card';
         card.setAttribute('data-area', s.area);
         
-        // 处理图片：如果有 s.image 则显示图片，否则显示默认图（或之前的emoji逻辑）
-        // 这里假设 data.js 里都有 image 字段，或者使用默认占位图
+        // 处理图片
         const imgSrc = s.image ? s.image : 'https://via.placeholder.com/80?text=Loudi';
-        
-        // 构造百度百科链接
         const baikeUrl = `https://baike.baidu.com/item/${s.name}`;
 
         card.innerHTML = `
@@ -269,10 +258,14 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
                 <div class="card-desc">${s.desc}</div>
             </div>`;
             
-        // 点击卡片整体：地图跳转
+        // 点击卡片：地图跳转
         card.onclick = () => {
             map.flyTo([s.lat, s.lng], 14); 
             m.openPopup();
+            // 在移动端，点击卡片后自动收起侧边栏，方便看地图
+            if (window.innerWidth < 768) {
+                document.querySelector('.sidebar').classList.add('collapsed');
+            }
         };
         document.getElementById('spotList').appendChild(card);
 
