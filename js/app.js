@@ -179,10 +179,15 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
     renderTour(currentFilter, currentBtn, e.target.value);
 });
 
-// 新增：侧边栏整体收起功能
+// 修改点：侧边栏收起逻辑
 window.toggleSidebar = function() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('collapsed');
+    
+    // 关键修复：等待动画结束后(300ms)，告诉地图重新适应大小
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 300);
 }
 
 // 核心渲染函数
@@ -244,7 +249,6 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         card.className = 'spot-card';
         card.setAttribute('data-area', s.area);
         
-        // 处理图片
         const imgSrc = s.image ? s.image : 'https://via.placeholder.com/80?text=Loudi';
         const baikeUrl = `https://baike.baidu.com/item/${s.name}`;
 
@@ -265,6 +269,8 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
             // 在移动端，点击卡片后自动收起侧边栏，方便看地图
             if (window.innerWidth < 768) {
                 document.querySelector('.sidebar').classList.add('collapsed');
+                // 同样需要触发resize
+                setTimeout(() => map.invalidateSize(), 300);
             }
         };
         document.getElementById('spotList').appendChild(card);
