@@ -7,7 +7,7 @@ const spots = [
         "area": "娄星", 
         "icon": "🎓", 
         "tags": "高校", 
-        "image": "https://source.unsplash.com/200x200/?university,campus",
+        "image": "images/湖南人文科技学院.jpg",
         "desc": "娄底唯一的公办本科院校，前身是娄底师专。" 
     },
     { 
@@ -17,7 +17,7 @@ const spots = [
         "area": "娄星", 
         "icon": "🎓", 
         "tags": "高校", 
-        "image": "https://source.unsplash.com/200x200/?college,building",
+        "image": "images/娄底职业技术学院.jpg",
         "desc": "国家骨干高职院校，位于月塘街。" 
     },
     { 
@@ -27,17 +27,17 @@ const spots = [
         "area": "娄星", 
         "icon": "🎓", 
         "tags": "高校", 
-        "image": "https://source.unsplash.com/200x200/?school,gate",
+        "image": "images/娄底潇湘职业学院.jpg",
         "desc": "位于娄底经开区，民办高职院校。" 
     },
     { 
-        "name": "娄底幼儿师范专科学校", 
+        "name": "娄底幼儿师范高等专科学校", 
         "lat": 27.6858, 
         "lng": 111.4350, 
         "area": "冷水江", 
         "icon": "🎓", 
         "tags": "高校", 
-        "image": "https://source.unsplash.com/200x200/?student,education",
+        "image": "images/娄底幼儿师范高等专科学校.jpg",
         "desc": "前身为冷水江师范，培养幼教人才。" 
     },
 
@@ -49,27 +49,27 @@ const spots = [
         "area": "新化", 
         "icon": "🏫", 
         "tags": "学府", 
-        "image": "https://source.unsplash.com/200x200/?highschool,chinese",
+        "image": "images/新化一中.jpg",
         "desc": "创办于1898年，原名新化实学堂。" 
     },
     { 
-        "name": "双峰书院 (双峰一中)", 
+        "name": "双峰书院", 
         "lat": 27.460377, 
         "lng": 112.163784, 
         "area": "双峰", 
         "icon": "🏫", 
         "tags": "学府", 
-        "image": "https://source.unsplash.com/200x200/?ancient,architecture",
+        "image": "images/双峰书院.jpg",
         "desc": "始于1760年乾隆御批的双峰书院。" 
     },
     { 
-        "name": "涟源一中 (国师旧址)", 
+        "name": "涟源一中", 
         "lat": 27.6953, 
         "lng": 111.6636, 
         "area": "涟源", 
         "icon": "🏫", 
         "tags": "学府", 
-        "image": "https://source.unsplash.com/200x200/?history,classroom",
+        "image": "images/涟源一中.jpg",
         "desc": "抗战时期“国立师范学院”旧址。" 
     },
 
@@ -80,7 +80,7 @@ const spots = [
         "lng": 111.309827, 
         "area": "新化", 
         "icon": "🎖️", 
-        "image": "https://source.unsplash.com/200x200/?memorial,statue",
+        "image": "images/罗盛教纪念馆.jpg",
         "desc": "位于新化资江一桥西端北侧，纪念伟大的国际主义战士罗盛教。" 
     },
     { 
@@ -89,7 +89,7 @@ const spots = [
         "lng": 111.308176, 
         "area": "新化", 
         "icon": "🏮", 
-        "image": "https://source.unsplash.com/200x200/?oldstreet,lantern",
+        "image": "images/新化古城.jpg",
         "desc": "资江老码头旁的千年古街，保留了大量明清建筑，是美食聚集地。" 
     },
     { 
@@ -98,7 +98,7 @@ const spots = [
         "lng": 111.306781, 
         "area": "新化", 
         "icon": "🗼", 
-        "image": "https://source.unsplash.com/200x200/?pagoda,tower",
+        "image": "images/北塔公园.jpg",
         "desc": "矗立于资江北岸，古塔凌霄，是新化县城的标志性景观。" 
     },
     { 
@@ -107,7 +107,7 @@ const spots = [
         "lng": 111.3435, 
         "area": "新化", 
         "icon": "🦁", 
-        "image": "https://source.unsplash.com/200x200/?park,forest",
+        "image": "images/狮子山公园.jpg",
         "desc": "位于县城东部，因山形似卧狮而得名，是市民休闲健身的天然氧吧。" 
     },
     { 
@@ -116,7 +116,7 @@ const spots = [
         "lng": 110.968766, 
         "area": "新化", 
         "icon": "🌾", 
-        "image": "https://source.unsplash.com/200x200/?rice,terrace",
+        "image": "images/紫鹊界梯田.jpg",
         "desc": "全球重要农业文化遗产，两千多年历史的秦汉古梯田，灌溉奇观。" 
     },
     { 
@@ -125,7 +125,7 @@ const spots = [
         "lng": 111.31559, 
         "area": "新化", 
         "icon": "🌲", 
-        "image": "https://source.unsplash.com/200x200/?mountain,fog",
+        "image": "images/大熊山公园.jpg",
         "desc": "湘中屋脊，蚩尤祖山，拥有广袤的原始次生林。" 
     },
     { 
@@ -134,7 +134,7 @@ const spots = [
         "lng": 111.29326, 
         "area": "新化", 
         "icon": "🐲", 
-        "image": "https://source.unsplash.com/200x200/?cave,stalactite",
+        "image": "images/梅山龙宫.jpg",
         "desc": "亚洲最美溶洞之一，资江畔的地下艺术宫殿。" 
     },
     { 
@@ -143,7 +143,7 @@ const spots = [
         "lng": 112.459149, 
         "area": "双峰", 
         "icon": "📜", 
-        "image": "https://source.unsplash.com/200x200/?chinese,mansion",
+        "image": "images/曾国藩故居.jpg",
         "desc": "荷叶镇富厚堂，中国保存最完好的乡间侯府，家教文化典范。" 
     },
     { 
@@ -152,7 +152,7 @@ const spots = [
         "lng": 112.202359, 
         "area": "双峰", 
         "icon": "🚩", 
-        "image": "https://source.unsplash.com/200x200/?red,flag",
+        "image": "images/蔡和森纪念馆.jpg",
         "desc": "位于双峰县城中心，纪念中国共产党早期领导人蔡和森。" 
     },
     { 
@@ -161,7 +161,7 @@ const spots = [
         "lng": 112.176226, 
         "area": "双峰", 
         "icon": "🌊", 
-        "image": "https://source.unsplash.com/200x200/?lake,water",
+        "image": "images/水府庙水库.jpg",
         "desc": "湘中第一大人工湖，烟波浩渺，景色宜人。" 
     },
     { 
@@ -170,7 +170,7 @@ const spots = [
         "lng": 111.45722, 
         "area": "冷水江", 
         "icon": "🐒", 
-        "image": "https://source.unsplash.com/200x200/?cave,rock",
+        "image": "images/波月洞.jpg",
         "desc": "86版《西游记》水帘洞取景地，世界熔岩博物馆。" 
     },
     { 
@@ -179,7 +179,7 @@ const spots = [
         "lng": 111.491446, 
         "area": "冷水江", 
         "icon": "⚒️", 
-        "image": "https://source.unsplash.com/200x200/?mine,industrial",
+        "image": "images/锡矿山遗址.jpg",
         "desc": "世界锑都，保留了独特的工矿业遗迹和红色记忆。" 
     },
     { 
@@ -188,7 +188,7 @@ const spots = [
         "lng": 111.74539, 
         "area": "涟源", 
         "icon": "🏞️", 
-        "image": "https://source.unsplash.com/200x200/?landscape,cliff",
+        "image": "images/湄江地质公园.jpg",
         "desc": "三湘独秀，十里画廊，典型的喀斯特地貌奇观。" 
     },
     { 
@@ -197,7 +197,7 @@ const spots = [
         "lng": 111.827, 
         "area": "涟源", 
         "icon": "💊", 
-        "image": "https://source.unsplash.com/200x200/?herb,mountain",
+        "image": "images/龙山药王谷.jpg",
         "desc": "相传药王孙思邈曾在此隐居，高山避暑养生胜地。" 
     },
     { 
@@ -206,7 +206,7 @@ const spots = [
         "lng": 112.012616, 
         "area": "娄星", 
         "icon": "🐎", 
-        "image": "https://source.unsplash.com/200x200/?statue,park",
+        "image": "images/石马公园.jpg",
         "desc": "娄底市中心的老牌公园，因园内有石马雕像而得名。" 
     },
     { 
@@ -215,7 +215,7 @@ const spots = [
         "lng": 111.994537, 
         "area": "娄星", 
         "icon": "🌳", 
-        "image": "https://source.unsplash.com/200x200/?river,green",
+        "image": "images/孙水公园.jpg",
         "desc": "市政府旁的大型城市公园，被誉为城市绿肺。" 
     },
     { 
@@ -224,7 +224,7 @@ const spots = [
         "lng": 111.1650, 
         "area": "新化", 
         "icon": "🧊", 
-        "image": "https://source.unsplash.com/200x200/?waterfall,nature",
+        "image": "images/三联峒冰泉.jpg",
         "desc": "维山乡，喊泉与玻璃桥。" 
     },
     { 
@@ -233,7 +233,7 @@ const spots = [
         "lng": 110.8947, 
         "area": "新化", 
         "icon": "🍵", 
-        "image": "https://source.unsplash.com/200x200/?tea,field",
+        "image": "images/渠江源茶园.jpg",
         "desc": "奉家镇，黑茶之源。" 
     },
     { 
@@ -242,7 +242,7 @@ const spots = [
         "lng": 111.2999, 
         "area": "新化", 
         "icon": "🚣", 
-        "image": "https://source.unsplash.com/200x200/?rafting,river",
+        "image": "images/油溪河漂流.jpg",
         "desc": "中华第一漂，峡谷急流。" 
     },
     { 
@@ -251,7 +251,7 @@ const spots = [
         "lng": 112.3740, 
         "area": "双峰", 
         "icon": "🏡", 
-        "image": "https://source.unsplash.com/200x200/?village,old",
+        "image": "images/峡石古村.jpg",
         "desc": "明清古建筑群。" 
     },
     { 
@@ -260,7 +260,7 @@ const spots = [
         "lng": 112.3358, 
         "area": "双峰", 
         "icon": "⛰️", 
-        "image": "https://source.unsplash.com/200x200/?mountain,peak",
+        "image": "images/九峰山公园.jpg",
         "desc": "双峰衡阳交界，登山远眺。" 
     },
     { 
@@ -269,7 +269,7 @@ const spots = [
         "lng": 111.4255, 
         "area": "冷水江", 
         "icon": "🌄", 
-        "image": "https://source.unsplash.com/200x200/?temple,mountain",
+        "image": "images/大乘山.jpg",
         "desc": "冷江北郊佛教圣地。" 
     },
     { 
@@ -278,7 +278,7 @@ const spots = [
         "lng": 111.4358, 
         "area": "冷水江", 
         "icon": "🌉", 
-        "image": "https://source.unsplash.com/200x200/?river,bridge",
+        "image": "images/资江风光带.jpg",
         "desc": "市区沿江风光带。" 
     },
     { 
@@ -287,7 +287,7 @@ const spots = [
         "lng": 111.5941, 
         "area": "冷水江", 
         "icon": "✍️", 
-        "image": "https://source.unsplash.com/200x200/?house,vintage",
+        "image": "images/谢冰莹故居.jpg",
         "desc": "女作家谢冰莹故居，铎山镇。" 
     },
     { 
@@ -296,7 +296,7 @@ const spots = [
         "lng": 111.8141, 
         "area": "涟源", 
         "icon": "💧", 
-        "image": "https://source.unsplash.com/200x200/?waterfall,scenery",
+        "image": "images/飞水涯瀑布.jpg",
         "desc": "湘中第一瀑，气势磅礴。" 
     },
     { 
@@ -305,7 +305,7 @@ const spots = [
         "lng": 111.6, 
         "area": "涟源", 
         "icon": "⛵", 
-        "image": "https://source.unsplash.com/200x200/?lake,boat",
+        "image": "images/白马湖.jpg",
         "desc": "水域宽阔，休闲垂钓。" 
     },
     { 
@@ -314,7 +314,7 @@ const spots = [
         "lng": 111.6718, 
         "area": "涟源", 
         "icon": "🏰", 
-        "image": "https://source.unsplash.com/200x200/?town,historic",
+        "image": "images/围城故里.jpg",
         "desc": "钱钟书《围城》背景地蓝田。" 
     },
     { 
@@ -323,7 +323,7 @@ const spots = [
         "lng": 111.8161, 
         "area": "娄星", 
         "icon": "🧚", 
-        "image": "https://source.unsplash.com/200x200/?mountain,forest",
+        "image": "images/仙女寨.jpg",
         "desc": "万宝镇，登山祈福。" 
     },
     { 
@@ -332,7 +332,7 @@ const spots = [
         "lng": 112.0353, 
         "area": "娄星", 
         "icon": "🏛️", 
-        "image": "https://source.unsplash.com/200x200/?museum,history",
+        "image": "images/娄底博物馆.jpg",
         "desc": "历史文化窗口。" 
     },
     { 
@@ -341,7 +341,7 @@ const spots = [
         "lng": 111.9639, 
         "area": "娄星", 
         "icon": "🎣", 
-        "image": "https://source.unsplash.com/200x200/?reservoir,camping",
+        "image": "images/双江水库.jpg",
         "desc": "北郊水源地，露营好去处。" 
     },
     { 
@@ -350,7 +350,7 @@ const spots = [
         "lng": 111.9875, 
         "area": "娄星", 
         "icon": "🌳", 
-        "image": "https://source.unsplash.com/200x200/?garden,park",
+        "image": "images/青山公园.jpg",
         "desc": "城市社区公园。" 
     }
 ];
