@@ -1,7 +1,7 @@
 // ===========================================
-// 1. 初始化地图
+// 1. 初始化地图 (已修改为 HTTPS)
 // ===========================================
-const normalMap = L.tileLayer('http://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+const normalMap = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德地图'
 });
@@ -35,18 +35,16 @@ const layers = {
 let geoData = null;
 let hunanData = null;
 let isHunanMode = false;
-let scopeControlBtn = null; // 全局保存按钮引用，方便在地图点击时调用
+let scopeControlBtn = null;
 
-// 定义湖南模式下显示的唯一标记（娄底市中心）
 const loudiCenterMarker = L.marker([27.7017, 111.9963], {
-    interactive: true // 允许点击
+    interactive: true 
 }).bindTooltip("📍 娄底市 (点击进入)", { 
     permanent: true, 
     direction: 'right',
     className: 'city-label'
 });
 
-// 点击这个中心标记，也能返回娄底模式
 loudiCenterMarker.on('click', () => {
     toggleRegion();
 });
@@ -67,7 +65,7 @@ fetch('hunan.json')
     .catch(e => console.error(e));
 
 // ===========================================
-// 3. 控件与切换逻辑 (核心修改部分)
+// 3. 控件与切换逻辑
 // ===========================================
 const ScopeControl = L.Control.extend({
     options: { position: 'topleft' }, 
@@ -82,13 +80,8 @@ const ScopeControl = L.Control.extend({
         container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
         
         container.innerHTML = '🌏 湖南全省';
-        
-        // 保存到全局变量，方便外部调用
         scopeControlBtn = container;
-        
-        container.onclick = function() {
-            toggleRegion();
-        }
+        container.onclick = function() { toggleRegion(); }
         return container;
     }
 });
@@ -100,45 +93,30 @@ function toggleRegion() {
         return;
     }
 
-    const btn = scopeControlBtn; // 获取按钮
+    const btn = scopeControlBtn; 
 
     if (!isHunanMode) {
-        // --- 进入湖南模式 ---
         isHunanMode = true;
         btn.innerHTML = '🏠 返回娄底';
         
-        // 1. 清空所有内容（包括景点和边界）
         layers.borders.clearLayers();
-        layers.spots.clearLayers(); // 隐藏所有详细景点
+        layers.spots.clearLayers(); 
         
-        // 2. 添加唯一的“娄底市”大标记
         loudiCenterMarker.addTo(map);
 
-        // 3. 绘制湖南地图
         L.geoJSON(hunanData, {
             style: f => {
                 const name = f.properties.name || "";
                 if (name.includes("娄底")) {
-                    return { 
-                        color: "#d946ef",
-                        weight: 2,             
-                        fillColor: "#d946ef",
-                        fillOpacity: 0.7
-                    };
+                    return { color: "#d946ef", weight: 2, fillColor: "#d946ef", fillOpacity: 0.7 };
                 } else {
-                    return { 
-                        color: "#fff",
-                        weight: 1,             
-                        fillColor: "#1e293b",
-                        fillOpacity: 0.5
-                    };
+                    return { color: "#fff", weight: 1, fillColor: "#1e293b", fillOpacity: 0.5 };
                 }
             },
             onEachFeature: function(feature, layer) {
                 const name = feature.properties.name;
                 layer.bindTooltip(name, { sticky: true, direction: 'center', className: 'city-label' });
                 
-                // 交互效果
                 layer.on('mouseover', function() {
                     this.setStyle({ fillOpacity: 0.8, color: "#facc15", weight: 2 }); 
                 });
@@ -150,12 +128,8 @@ function toggleRegion() {
                     });
                 });
 
-                // 🌟 核心新功能：点击“娄底”板块，自动切换回娄底模式
                 if (name.includes("娄底")) {
-                    layer.on('click', function() {
-                        toggleRegion(); // 递归调用自己，触发 else 分支
-                    });
-                    // 让鼠标变成手型，提示可点击
+                    layer.on('click', function() { toggleRegion(); });
                     layer.options.cursor = 'pointer'; 
                 }
             }
@@ -164,33 +138,31 @@ function toggleRegion() {
         map.flyTo([27.5, 111.8], 7);
 
     } else {
-        // --- 返回娄底模式 ---
         isHunanMode = false;
         btn.innerHTML = '🌏 湖南全省';
-        
-        // 1. 移除那个大标记
         map.removeLayer(loudiCenterMarker);
-        
-        // 2. 重新渲染景点和娄底边界
         renderTour(currentFilter, currentBtn); 
     }
 }
 
 // ===========================================
-// 4. 其他逻辑保持不变
+// 4. 搜索与渲染逻辑 (核心修改部分)
 // ===========================================
+
 window.setMode = function(mode) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     
-    // 切换 Tab 时强制退出湖南模式
     if (isHunanMode) toggleRegion();
 
     if(mode === 'tour') {
         document.querySelector('.tab:nth-child(1)').classList.add('active');
         document.getElementById('view-tour').classList.add('active');
         document.getElementById('timeline').classList.remove('show');
-        renderTour();
+        
+        // 重新渲染，带上当前的搜索词
+        const keyword = document.getElementById('searchInput').value;
+        renderTour(currentFilter, currentBtn, keyword);
     } else {
         document.querySelector('.tab:nth-child(2)').classList.add('active');
         document.getElementById('view-hist').classList.add('active');
@@ -202,9 +174,21 @@ window.setMode = function(mode) {
 let currentFilter = 'all'; 
 let currentBtn = null;
 
-window.renderTour = function(filter = 'all', btn) {
+// 新增：监听搜索输入
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    renderTour(currentFilter, currentBtn, e.target.value);
+});
+
+// 修改：增加 keyword 参数
+window.renderTour = function(filter = 'all', btn, keyword = '') {
     currentFilter = filter;
     currentBtn = btn;
+    
+    // 如果没有传入 keyword，尝试从输入框获取（防止切換按鈕時搜索詞丟失）
+    if (typeof keyword !== 'string') {
+        keyword = document.getElementById('searchInput').value || '';
+    }
+    keyword = keyword.trim();
 
     if(btn) {
         document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
@@ -231,9 +215,18 @@ window.renderTour = function(filter = 'all', btn) {
     }
 
     spots.forEach(s => {
+        // 1. 区域/分类过滤
         if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
         if(filter === '学府' && (!s.tags || !s.tags.includes('学府'))) return;
         if(filter !== 'all' && filter !== '高校' && filter !== '学府' && s.area.indexOf(filter) === -1) return;
+
+        // 2. 关键词搜索过滤 (新增逻辑)
+        if (keyword) {
+            const matchName = s.name.includes(keyword);
+            const matchDesc = s.desc.includes(keyword);
+            const matchArea = s.area.includes(keyword);
+            if (!matchName && !matchDesc && !matchArea) return;
+        }
 
         let c = "#666";
         if(s.area.includes("新化")) c="#8b5cf6";
@@ -269,8 +262,8 @@ window.renderTour = function(filter = 'all', btn) {
         `);
     });
     
-    // 只有在不是湖南模式的时候，才重置视角
-    if(!isHunanMode && (filter === 'all' || filter === '高校' || filter === '学府')) {
+    // 只有在不是湖南模式的时候，且未搜索时，才重置视角
+    if(!isHunanMode && (filter === 'all' || filter === '高校' || filter === '学府') && !keyword) {
         map.setView([27.7017, 111.9963], 9);
     }
 }
