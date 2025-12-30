@@ -1,6 +1,6 @@
 // ================= 1. 初始化地圖 =================
 
-const normalMap = L.tileLayer('http://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+const normalMap = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
     attribution: '© 高德地圖'
 });
@@ -10,7 +10,6 @@ const satMap = L.tileLayer('https://webst02.is.autonavi.com/appmaptile?style=6&x
     attribution: '© 高德衛星'
 });
 
-// 默認視圖：婁底市中心
 const map = L.map('map', { 
     zoomControl: false,
     layers: [normalMap]
@@ -24,59 +23,68 @@ const baseMaps = {
 };
 L.control.layers(baseMaps).addTo(map);
 
-// 【實用工具】點擊地圖獲取座標（開發調試用）
+// 【實用工具】點擊地圖獲取坐標（按 F12 看控制台）
 map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(6);
     const lng = e.latlng.lng.toFixed(6);
-    console.log(`座標已複製: [${lng}, ${lat}]`); // 方便複製到代碼
+    console.log(`[${lng}, ${lat}]`); // 方便複製
     L.popup()
         .setLatLng(e.latlng)
-        .setContent(`座標: ${lng}, ${lat}<br><span style="font-size:12px;color:#888">已輸出至控制台(F12)</span>`)
+        .setContent(`坐標: ${lng}, ${lat}<br><span style="font-size:12px;color:#888">已輸出至控制台</span>`)
         .openOn(map);
 });
 
-// ================= 2. 全局狀態管理 =================
-// 存儲 GeoJSON 數據
-let geoData = null; 
-// 圖層管理
+// ================= 2. 全局狀態與數據 =================
+
 const layers = {
-    spots: L.layerGroup().addTo(map),  // 景點層
-    borders: L.layerGroup().addTo(map) // 邊界層
+    spots: L.layerGroup().addTo(map),
+    borders: L.layerGroup().addTo(map)
 };
 
-// 當前篩選狀態
+let geoData = null; // 存放 loudi.json 數據
+
+// 狀態管理
 let appState = {
-    mode: 'tour',      // 'tour' (現代) 或 'hist' (歷史)
-    category: 'all',   // 標籤過濾：all, 高校, 新化...
-    search: ''         // 搜索關鍵詞
+    mode: 'tour',      
+    category: 'all',   
+    search: ''         
 };
 
-// ================= 3. 數據加載 =================
-// 異步加載 GeoJSON 文件 (確保你上傳了這些文件)
-Promise.all([
-    fetch('loudi.json').then(r => r.json()), // 縣級邊界
-    fetch('hunan.json').then(r => r.json())  // 市級邊界(如果需要)
-]).then(([loudiData, hunanData]) => {
-    // 這裡我們主要用 loudi.json 做歷史演示
-    geoData = loudiData; 
-    console.log("地圖數據加載完成");
-}).catch(e => console.error("地圖數據加載失敗:", e));
+// ================= 3. 數據加載 (GitHub 環境適用) =================
+
+// 加載 loudi.json 用於歷史邊界
+fetch('loudi.json')
+    .then(response => {
+        if (!response.ok) throw new Error("HTTP error " + response.status);
+        return response.json();
+    })
+    .then(data => {
+        geoData = data;
+        console.log("歷史地圖數據加載成功");
+    })
+    .catch(err => {
+        console.warn("無法加載 loudi.json (如果只需要現代導覽可忽略):", err);
+    });
+
+// 確保一開始就渲染一次導覽列表
+// (不需要等 fetch 完成，因為現代導覽用的是 data.js 裡的 spots)
+updateTourView();
 
 
 // ================= 4. 核心邏輯：導覽模式 =================
 
-// 切換主模式
+// 切換模式 (現代 vs 歷史)
 window.setMode = function(mode) {
     appState.mode = mode;
     
-    // UI 切換
+    // UI 更新
     document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
     event.target.classList.add('active');
     
     document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
     document.getElementById(`view-${mode}`).classList.add('active');
 
-    // 地圖清理
+    // 清理地圖
     layers.spots.clearLayers();
     layers.borders.clearLayers();
     document.getElementById('timeline').classList.remove('show');
@@ -85,57 +93,50 @@ window.setMode = function(mode) {
         updateTourView();
     } else {
         document.getElementById('timeline').classList.add('show');
-        // 默認加載第一個歷史時期
-        loadHist(0);
+        loadHist(0); // 默認加載第一個時期
     }
 };
 
-// 篩選標籤點擊
+// 標籤過濾
 window.filterSpots = function(category, btn) {
     appState.category = category;
-    
-    // 更新按鈕樣式
     document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
-
     updateTourView();
 };
 
-// 搜索框輸入
+// 搜索功能
 window.searchSpots = function(text) {
     appState.search = text.toLowerCase().trim();
     updateTourView();
 };
 
-// 綜合更新視圖（核心函數）
+// 更新視圖 (核心)
 function updateTourView() {
     layers.spots.clearLayers();
     const listEl = document.getElementById('spotList');
     listEl.innerHTML = "";
 
-    // 多重過濾：標籤 + 搜索詞
+    // 篩選數據
     const filtered = spots.filter(s => {
-        // 1. 檢查標籤
         const matchCat = appState.category === 'all' || s.tags.includes(appState.category) || s.area === appState.category;
-        // 2. 檢查搜索
         const matchSearch = s.name.toLowerCase().includes(appState.search) || 
                             s.desc.toLowerCase().includes(appState.search);
         return matchCat && matchSearch;
     });
 
-    // 如果沒有結果
     if(filtered.length === 0) {
         listEl.innerHTML = `<div style="text-align:center;color:#999;padding:20px">未找到相關地點</div>`;
         return;
     }
 
-    // 收集所有座標用於自動縮放
+    // 收集坐標用於自動縮放
     const bounds = [];
 
     filtered.forEach(s => {
-        const color = getTagColor(s.tags); // 獲取顏色
+        const color = getTagColor(s.tags);
         
-        // 1. 渲染列表項
+        // 渲染列表
         const item = document.createElement('div');
         item.className = 'spot-card';
         item.innerHTML = `
@@ -145,22 +146,19 @@ function updateTourView() {
             </div>
             <p class="s-desc">${s.desc}</p>
         `;
-        // 點擊列表跳轉地圖
         item.onclick = () => {
             map.flyTo([s.lat, s.lng], 14);
             marker.openPopup();
-            // 在手機端點擊後自動滾動到地圖（可選）
             if(window.innerWidth < 768) {
                 document.getElementById('map').scrollIntoView({behavior: "smooth"});
             }
         };
         listEl.appendChild(item);
 
-        // 2. 渲染地圖標記
+        // 渲染地圖標記
         const marker = L.marker([s.lat, s.lng]).addTo(layers.spots);
         bounds.push([s.lat, s.lng]);
 
-        // 綁定彈窗
         marker.bindPopup(`
             <div class="pop-header" style="background:${color}">${s.name}</div>
             <div class="pop-body">
@@ -170,72 +168,58 @@ function updateTourView() {
         `);
     });
 
-    // 【核心優化】自動調整地圖視野以包含所有篩選出的點
+    // 【重要】自動調整視野
     if (bounds.length > 0) {
-        // padding 避免點貼在邊緣
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 }); 
     }
 }
 
-// 輔助函數：根據標籤獲取顏色
 function getTagColor(tag) {
-    if(tag.includes("高校")) return "#2563eb"; // 藍
-    if(tag.includes("學府")) return "#d97706"; // 橙
-    return "#10b981"; // 綠（默認）
+    if(tag.includes("高校")) return "#2563eb"; 
+    if(tag.includes("學府")) return "#d97706"; 
+    return "#10b981"; 
 }
 
 // ================= 5. 歷史溯源模式 =================
 
 window.loadHist = function(idx) {
-    // 按鈕樣式
     document.querySelectorAll('.t-btn').forEach((b, i) => {
         b.classList.toggle('active', i === idx);
     });
 
-    const d = historyEras[idx]; // 來自 data.js
+    const d = historyEras[idx];
     if(!d) return;
 
-    // 更新文字
     document.getElementById('h-title').innerText = d.title;
     document.getElementById('h-era').innerText = d.year;
     document.getElementById('h-desc').innerHTML = d.desc;
 
-    // 清理圖層
     layers.spots.clearLayers();
     layers.borders.clearLayers();
 
-    // 繪製歷史邊界
+    // 只有當 geoData 加載成功時才繪製
     if (geoData) {
         L.geoJSON(geoData, {
             style: f => {
                 const name = f.properties.name || "";
-                // 查找該地區在當前歷史時期屬於哪個組
                 let group = d.groups.find(g => {
-                    // 模糊匹配：比如 "新化" 匹配 "新化縣"
                     return g.members.some(m => name.includes(m));
                 });
-                
                 return {
-                    color: "#fff",
-                    weight: 1,
+                    color: "#fff", weight: 1,
                     fillColor: group ? group.color : "#ccc",
                     fillOpacity: 0.6
                 };
             },
             onEachFeature: (f, layer) => {
-                // 顯示地名 Tooltip
                 layer.bindTooltip(f.properties.name, {
-                    permanent: true, 
-                    direction: 'center',
-                    className: 'map-label' // 你可以在 css 加一個樣式去掉背景
+                    permanent: true, direction: 'center', className: 'map-label'
                 });
             }
         }).addTo(layers.borders);
+    } else {
+        console.log("GeoJSON 數據尚未加載完成或加載失敗");
     }
 
-    // 視圖跳轉到該歷史時期的中心
     map.flyTo(d.center, d.zoom);
 };
-
-// 初始化：加載第一次視圖
-updateTourView();
