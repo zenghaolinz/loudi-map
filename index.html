@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>娄底全域 · 智游与溯源</title>
+    <title>婁底全域 · 智遊與溯源</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css" />
@@ -12,11 +12,16 @@
 
 <div class="sidebar">
     <div class="header">
-        <div class="title">娄底全域导览</div>
-        <div class="subtitle">湘中明珠 · 蚩尤故里 · 湘军摇篮</div>
+        <div class="title">婁底全域導覽</div>
+        <div class="subtitle">湘中明珠 · 蚩尤故里 · 湘軍搖籃</div>
+        
+        <div class="search-box-wrapper">
+            <input type="text" id="searchInput" placeholder="🔍 搜尋景點、學校或地名..." oninput="searchSpots(this.value)">
+        </div>
+
         <div class="tabs">
-            <div class="tab active" onclick="setMode('tour')">🚀 现代景点</div>
-            <div class="tab" onclick="setMode('hist')">📜 历史疆域</div>
+            <div class="tab active" onclick="setMode('tour')">🚀 現代景點</div>
+            <div class="tab" onclick="setMode('hist')">📜 歷史疆域</div>
         </div>
     </div>
     
@@ -25,21 +30,21 @@
             <div class="filter-row">
                 <div class="tag-btn active" onclick="filterSpots('all', this)">全部</div>
                 <div class="tag-btn" onclick="filterSpots('高校', this)">🎓 高校</div>
-                <div class="tag-btn" onclick="filterSpots('学府', this)">🏫 百年学府</div>
+                <div class="tag-btn" onclick="filterSpots('學府', this)">🏫 百年學府</div>
                 <div class="tag-btn" onclick="filterSpots('新化', this)">新化</div>
-                <div class="tag-btn" onclick="filterSpots('双峰', this)">双峰</div>
+                <div class="tag-btn" onclick="filterSpots('雙峰', this)">雙峰</div>
                 <div class="tag-btn" onclick="filterSpots('冷水江', this)">冷水江</div>
-                <div class="tag-btn" onclick="filterSpots('涟源', this)">涟源</div>
-                <div class="tag-btn" onclick="filterSpots('娄星', this)">娄星</div>
+                <div class="tag-btn" onclick="filterSpots('漣源', this)">漣源</div>
+                <div class="tag-btn" onclick="filterSpots('婁星', this)">婁星</div>
             </div>
             <div id="spotList"></div>
         </div>
         
         <div id="view-hist" class="panel">
             <div class="hist-card">
-                <div class="hist-h" id="h-title"></div>
-                <div class="hist-sub" id="h-era"></div>
-                <div class="hist-p" id="h-desc"></div>
+                <div class="hist-h" id="h-title">請選擇下方年代</div>
+                <div class="hist-sub" id="h-era">點擊時間軸查看變遷</div>
+                <div class="hist-p" id="h-desc">地圖將展示該時期的行政區劃演變。</div>
             </div>
         </div>
     </div>
@@ -48,18 +53,16 @@
 <div class="map-container">
     <div id="map"></div>
     <div class="timeline-bar" id="timeline">
-        <div class="t-btn" onclick="loadHist(0)">秦汉</div>
+        <div class="t-btn" onclick="loadHist(0)">秦漢</div>
         <div class="t-btn" onclick="loadHist(1)">宋代</div>
         <div class="t-btn" onclick="loadHist(2)">清代</div>
         <div class="t-btn" onclick="loadHist(3)">1969</div>
         <div class="t-btn" onclick="loadHist(4)">1977</div>
-        <div class="t-btn active" onclick="loadHist(5)">现代</div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="js/data.js"></script>
-<script src="js/app.js"></script>
-
+<script src="data.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
