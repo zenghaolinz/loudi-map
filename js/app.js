@@ -1,13 +1,14 @@
-// ================= 1. 初始化地圖 =================
+// ================= 1. 初始化地图 =================
 
+// 【关键修复】这里必须用 https，否则在 GitHub 上地图会是一片灰
 const normalMap = L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
-    attribution: '© 高德地圖'
+    attribution: '© 高德地图'
 });
 
 const satMap = L.tileLayer('https://webst02.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
     subdomains: ["01", "02", "03", "04"], 
-    attribution: '© 高德衛星'
+    attribution: '© 高德卫星'
 });
 
 const map = L.map('map', { 
@@ -18,62 +19,67 @@ const map = L.map('map', {
 L.control.zoom({ position: 'topright' }).addTo(map);
 
 const baseMaps = {
-    "🗺️ 電子地圖": normalMap,
-    "🛰️ 衛星影像": satMap
+    "🗺️ 电子地图": normalMap,
+    "🛰️ 卫星影像": satMap
 };
 L.control.layers(baseMaps).addTo(map);
 
-// 【實用工具】點擊地圖獲取坐標（按 F12 看控制台）
+// 【实用工具】点击地图获取坐标
 map.on('click', function(e) {
     const lat = e.latlng.lat.toFixed(6);
     const lng = e.latlng.lng.toFixed(6);
-    console.log(`[${lng}, ${lat}]`); // 方便複製
+    console.log(`[${lng}, ${lat}]`);
     L.popup()
         .setLatLng(e.latlng)
-        .setContent(`坐標: ${lng}, ${lat}<br><span style="font-size:12px;color:#888">已輸出至控制台</span>`)
+        .setContent(`坐标: ${lng}, ${lat}<br><span style="font-size:12px;color:#888">已输出至控制台</span>`)
         .openOn(map);
 });
 
-// ================= 2. 全局狀態與數據 =================
+// ================= 2. 全局状态与数据 =================
 
 const layers = {
     spots: L.layerGroup().addTo(map),
     borders: L.layerGroup().addTo(map)
 };
 
-let geoData = null; // 存放 loudi.json 數據
+let geoData = null; // 存放 loudi.json 数据
 
-// 狀態管理
+// 状态管理
 let appState = {
     mode: 'tour',      
     category: 'all',   
     search: ''         
 };
 
-// ================= 3. 數據加載 (GitHub 環境適用) =================
+// ================= 3. 数据加载 =================
 
-// 加載 loudi.json 用於歷史邊界
+// 加载 loudi.json (确保文件名大小写一致！loudi.json)
 fetch('loudi.json')
     .then(response => {
-        if (!response.ok) throw new Error("HTTP error " + response.status);
+        if (!response.ok) {
+            throw new Error(`无法找到 loudi.json (状态码: ${response.status})`);
+        }
         return response.json();
     })
     .then(data => {
         geoData = data;
-        console.log("歷史地圖數據加載成功");
+        console.log("历史地图数据加载成功");
     })
     .catch(err => {
-        console.warn("無法加載 loudi.json (如果只需要現代導覽可忽略):", err);
+        console.warn("历史地图加载失败:", err);
+        // 如果失败，给用户一个提示，不要默默失败
+        if(window.location.hostname.includes('github')) {
+            alert("⚠️ 提示：如果历史疆域无法显示，请检查 loudi.json 是否已上传，且文件名全是小写。");
+        }
     });
 
-// 確保一開始就渲染一次導覽列表
-// (不需要等 fetch 完成，因為現代導覽用的是 data.js 裡的 spots)
+// 立即渲染一次导览列表
 updateTourView();
 
 
-// ================= 4. 核心邏輯：導覽模式 =================
+// ================= 4. 核心逻辑：导览模式 =================
 
-// 切換模式 (現代 vs 歷史)
+// 切换模式 (现代 vs 历史)
 window.setMode = function(mode) {
     appState.mode = mode;
     
@@ -84,7 +90,7 @@ window.setMode = function(mode) {
     document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
     document.getElementById(`view-${mode}`).classList.add('active');
 
-    // 清理地圖
+    // 清理地图
     layers.spots.clearLayers();
     layers.borders.clearLayers();
     document.getElementById('timeline').classList.remove('show');
@@ -93,11 +99,11 @@ window.setMode = function(mode) {
         updateTourView();
     } else {
         document.getElementById('timeline').classList.add('show');
-        loadHist(0); // 默認加載第一個時期
+        loadHist(0); // 默认加载第一个时期
     }
 };
 
-// 標籤過濾
+// 标签过滤
 window.filterSpots = function(category, btn) {
     appState.category = category;
     document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
@@ -111,14 +117,15 @@ window.searchSpots = function(text) {
     updateTourView();
 };
 
-// 更新視圖 (核心)
+// 更新视图 (核心)
 function updateTourView() {
     layers.spots.clearLayers();
     const listEl = document.getElementById('spotList');
     listEl.innerHTML = "";
 
-    // 篩選數據
+    // 筛选数据
     const filtered = spots.filter(s => {
+        // 简体字匹配
         const matchCat = appState.category === 'all' || s.tags.includes(appState.category) || s.area === appState.category;
         const matchSearch = s.name.toLowerCase().includes(appState.search) || 
                             s.desc.toLowerCase().includes(appState.search);
@@ -126,11 +133,11 @@ function updateTourView() {
     });
 
     if(filtered.length === 0) {
-        listEl.innerHTML = `<div style="text-align:center;color:#999;padding:20px">未找到相關地點</div>`;
+        listEl.innerHTML = `<div style="text-align:center;color:#999;padding:20px">未找到相关地点</div>`;
         return;
     }
 
-    // 收集坐標用於自動縮放
+    // 收集坐标用于自动缩放
     const bounds = [];
 
     filtered.forEach(s => {
@@ -155,7 +162,7 @@ function updateTourView() {
         };
         listEl.appendChild(item);
 
-        // 渲染地圖標記
+        // 渲染地图标记
         const marker = L.marker([s.lat, s.lng]).addTo(layers.spots);
         bounds.push([s.lat, s.lng]);
 
@@ -163,24 +170,25 @@ function updateTourView() {
             <div class="pop-header" style="background:${color}">${s.name}</div>
             <div class="pop-body">
                 ${s.desc}
-                <a href="https://uri.amap.com/marker?position=${s.lng},${s.lat}&name=${s.name}" target="_blank" class="pop-link" style="background:${color}">🚀 導航去這裡</a>
+                <a href="https://uri.amap.com/marker?position=${s.lng},${s.lat}&name=${s.name}" target="_blank" class="pop-link" style="background:${color}">🚀 导航去这里</a>
             </div>
         `);
     });
 
-    // 【重要】自動調整視野
+    // 自动调整视野
     if (bounds.length > 0) {
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 }); 
     }
 }
 
+// 辅助函数：根据标签获取颜色 (简体字)
 function getTagColor(tag) {
     if(tag.includes("高校")) return "#2563eb"; 
-    if(tag.includes("學府")) return "#d97706"; 
+    if(tag.includes("学府")) return "#d97706"; 
     return "#10b981"; 
 }
 
-// ================= 5. 歷史溯源模式 =================
+// ================= 5. 历史溯源模式 =================
 
 window.loadHist = function(idx) {
     document.querySelectorAll('.t-btn').forEach((b, i) => {
@@ -197,7 +205,7 @@ window.loadHist = function(idx) {
     layers.spots.clearLayers();
     layers.borders.clearLayers();
 
-    // 只有當 geoData 加載成功時才繪製
+    // 只有当 geoData 加载成功时才绘制
     if (geoData) {
         L.geoJSON(geoData, {
             style: f => {
@@ -217,9 +225,7 @@ window.loadHist = function(idx) {
                 });
             }
         }).addTo(layers.borders);
-    } else {
-        console.log("GeoJSON 數據尚未加載完成或加載失敗");
-    }
+    } 
 
     map.flyTo(d.center, d.zoom);
 };
