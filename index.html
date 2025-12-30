@@ -11,12 +11,18 @@
 <body>
 
 <div class="sidebar">
-    <div class="header">
-        <div class="title">娄底全域导览</div>
-        <div class="subtitle">湘中明珠 · 蚩尤故里 · 湘军摇篮</div>
-        <div class="tabs">
-            <div class="tab active" onclick="setMode('tour')">🚀 现代景点</div>
-            <div class="tab" onclick="setMode('hist')">📜 历史疆域</div>
+    <div class="header" id="sidebarHeader">
+        <div class="header-top">
+            <div class="title">娄底全域导览</div>
+            <div class="toggle-btn" onclick="toggleHeader()">🔼</div>
+        </div>
+        
+        <div class="header-content-wrapper">
+            <div class="subtitle">湘中明珠 · 蚩尤故里 · 湘军摇篮</div>
+            <div class="tabs">
+                <div class="tab active" onclick="setMode('tour')">🚀 现代景点</div>
+                <div class="tab" onclick="setMode('hist')">📜 历史疆域</div>
+            </div>
         </div>
     </div>
     

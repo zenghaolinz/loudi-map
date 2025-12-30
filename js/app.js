@@ -174,17 +174,30 @@ window.setMode = function(mode) {
 let currentFilter = 'all'; 
 let currentBtn = null;
 
-// 新增：监听搜索输入
+// 监听搜索输入
 document.getElementById('searchInput').addEventListener('input', (e) => {
     renderTour(currentFilter, currentBtn, e.target.value);
 });
 
-// 修改：增加 keyword 参数
+// 新增：侧边栏头部折叠功能
+window.toggleHeader = function() {
+    const header = document.getElementById('sidebarHeader');
+    const btn = header.querySelector('.toggle-btn');
+    header.classList.toggle('collapsed');
+    
+    // 改变箭头方向 (通过 CSS rotate 也可以，这里也可以改字)
+    if(header.classList.contains('collapsed')) {
+        btn.innerHTML = '🔽';
+    } else {
+        btn.innerHTML = '🔼';
+    }
+}
+
+// 核心渲染函数
 window.renderTour = function(filter = 'all', btn, keyword = '') {
     currentFilter = filter;
     currentBtn = btn;
     
-    // 如果没有传入 keyword，尝试从输入框获取（防止切換按鈕時搜索詞丟失）
     if (typeof keyword !== 'string') {
         keyword = document.getElementById('searchInput').value || '';
     }
@@ -215,12 +228,11 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
     }
 
     spots.forEach(s => {
-        // 1. 区域/分类过滤
+        // 过滤逻辑
         if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
         if(filter === '学府' && (!s.tags || !s.tags.includes('学府'))) return;
         if(filter !== 'all' && filter !== '高校' && filter !== '学府' && s.area.indexOf(filter) === -1) return;
 
-        // 2. 关键词搜索过滤 (新增逻辑)
         if (keyword) {
             const matchName = s.name.includes(keyword);
             const matchDesc = s.desc.includes(keyword);
@@ -235,18 +247,29 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         if(s.area.includes("涟源")) c="#10b981";
         if(s.area.includes("娄星")) c="#ef4444";
         
+        // 构造卡片
         const card = document.createElement('div');
         card.className = 'spot-card';
         card.setAttribute('data-area', s.area);
+        
+        // 处理图片：如果有 s.image 则显示图片，否则显示默认图（或之前的emoji逻辑）
+        // 这里假设 data.js 里都有 image 字段，或者使用默认占位图
+        const imgSrc = s.image ? s.image : 'https://via.placeholder.com/80?text=Loudi';
+        
+        // 构造百度百科链接
+        const baikeUrl = `https://baike.baidu.com/item/${s.name}`;
+
         card.innerHTML = `
-            <div class="card-icon" style="color:${c}">${s.icon}</div>
+            <img src="${imgSrc}" class="card-img" alt="${s.name}" onerror="this.src='https://via.placeholder.com/80?text=No+Img'">
             <div class="card-info">
-                <div class="card-title">
-                    <span>${s.name}</span>
+                <div class="card-title-row">
+                    <span class="card-name" onclick="window.open('${baikeUrl}'); event.stopPropagation();" title="点击查看${s.name}的百科">${s.name}</span>
                     <span class="card-area" style="color:${c}">${s.area}</span>
                 </div>
                 <div class="card-desc">${s.desc}</div>
             </div>`;
+            
+        // 点击卡片整体：地图跳转
         card.onclick = () => {
             map.flyTo([s.lat, s.lng], 14); 
             m.openPopup();
@@ -256,13 +279,14 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         const m = L.marker([s.lat, s.lng], { draggable: false }).addTo(layers.spots);
         m.bindPopup(`
             <div class="pop-head" style="background:${c}">${s.name}</div>
-            <div class="pop-body">${s.desc}
+            <div class="pop-body">
+                <img src="${imgSrc}" style="width:100%; border-radius:8px; margin-bottom:8px;">
+                ${s.desc}
                 <a href="https://uri.amap.com/marker?position=${s.lng},${s.lat}&name=${s.name}" target="_blank" class="pop-link" style="background:${c}">🚀 导航去这里</a>
             </div>
         `);
     });
     
-    // 只有在不是湖南模式的时候，且未搜索时，才重置视角
     if(!isHunanMode && (filter === 'all' || filter === '高校' || filter === '学府') && !keyword) {
         map.setView([27.7017, 111.9963], 9);
     }
