@@ -28,36 +28,19 @@ L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 // 2. 数据与全局变量
 // ===========================================
 
-// --- 🎨 城市颜色配置 (不含永州) ---
-// 这里的键名对应 geojson 或 data.js 中的 area/name 字段
+// --- 🎨 城市颜色配置 ---
 const cityColors = {
-    "长沙": "#ef4444", // 红色
-    "株洲": "#3b82f6", // 蓝色
-    "湘潭": "#dc2626", // 深红
-    "衡阳": "#8b5cf6", // 紫色
-    "邵阳": "#06b6d4", // 青色
-    "岳阳": "#10b981", // 翠绿
-    "常德": "#f472b6", // 粉色
-    "张家界": "#0d9488", // 蓝绿
-    "益阳": "#84cc16", // 黄绿
-    "郴州": "#6366f1", // 靛蓝
-    "怀化": "#f59e0b", // 琥珀
-    "湘西": "#a855f7", // 紫罗兰
+    "长沙": "#ef4444", "株洲": "#3b82f6", "湘潭": "#dc2626", "衡阳": "#8b5cf6",
+    "邵阳": "#06b6d4", "岳阳": "#10b981", "常德": "#f472b6", "张家界": "#0d9488",
+    "益阳": "#84cc16", "郴州": "#6366f1", "怀化": "#f59e0b", "湘西": "#a855f7",
     
-    // 娄底各区县原有配色
-    "娄底": "#d946ef",
-    "新化": "#8b5cf6",
-    "冷水江": "#f97316",
-    "涟源": "#10b981",
-    "双峰": "#3b82f6",
-    "娄星": "#ef4444"
+    // 娄底各区县
+    "娄底": "#d946ef", "新化": "#8b5cf6", "冷水江": "#f97316",
+    "涟源": "#10b981", "双峰": "#3b82f6", "娄星": "#ef4444"
 };
 
-// 辅助函数：根据名字获取颜色
-// 如果找不到匹配的城市（如永州），返回默认灰色 #666
 function getAreaColor(name) {
     if (!name) return "#666";
-    // 优先匹配完整城市名
     for (let key in cityColors) {
         if (name.includes(key)) return cityColors[key];
     }
@@ -69,8 +52,9 @@ const layers = {
     borders: L.layerGroup().addTo(map) 
 };
 
-let geoData = null;
-let hunanData = null;
+// 读取 geo-data.js 中的数据变量
+let geoData = (typeof loudiGeoData !== 'undefined') ? loudiGeoData : null;
+let hunanData = (typeof hunanGeoData !== 'undefined') ? hunanGeoData : null;
 let isHunanMode = false;
 let scopeControlBtn = null;
 
@@ -86,22 +70,15 @@ loudiCenterMarker.on('click', () => {
     toggleRegion();
 });
 
-// 加载娄底详细数据
-fetch('loudi.json')
-    .then(r => r.json())
-    .then(d => {
-        geoData = d;
+// 初始化：如果数据存在，直接渲染
+if (geoData) {
+    // 延迟一下确保地图容器准备好
+    setTimeout(() => {
         setMode('tour');
-    })
-    .catch(e => console.error(e));
-
-// 加载湖南全省数据
-fetch('hunan.json')
-    .then(r => r.json())
-    .then(d => {
-        hunanData = d;
-    })
-    .catch(e => console.error(e));
+    }, 100);
+} else {
+    alert("⚠️ 错误：找不到地图数据，请检查 js/geo-data.js 文件是否建立正确！");
+}
 
 // ===========================================
 // 3. 控件与切换逻辑
@@ -128,7 +105,7 @@ map.addControl(new ScopeControl());
 
 function toggleRegion() {
     if (!hunanData) {
-        alert("⚠️ 还没找到 hunan.json 文件！");
+        alert("⚠️ 还没找到 hunan.json 的数据，请检查 js/geo-data.js！");
         return;
     }
 
@@ -147,10 +124,8 @@ function toggleRegion() {
         L.geoJSON(hunanData, {
             style: f => {
                 const name = f.properties.name || "";
-                // 获取对应颜色，如果不是指定城市（如永州），则返回默认
                 const color = getAreaColor(name);
                 
-                // 永州或未定义城市显示为暗色背景
                 if (color === "#666") {
                     return { color: "#fff", weight: 1, fillColor: "#1e293b", fillOpacity: 0.5 };
                 } else {
@@ -164,14 +139,12 @@ function toggleRegion() {
                 layer.bindTooltip(name, { sticky: true, direction: 'center', className: 'city-label' });
                 
                 layer.on('mouseover', function() {
-                    // 高亮效果
                     if(baseColor !== "#666") {
                         this.setStyle({ fillOpacity: 0.8, color: "#facc15", weight: 2 });
                     }
                 });
                 
                 layer.on('mouseout', function() {
-                    // 恢复原样
                     if(baseColor !== "#666") {
                         this.setStyle({ 
                             fillOpacity: 0.6,
@@ -208,7 +181,7 @@ window.setMode = function(mode) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     
-    // 如果在全省模式下切换TAB，先切回娄底模式（或者根据需求保留）
+    // 如果在全省模式下切换TAB，先切回娄底模式
     if (isHunanMode) toggleRegion();
 
     if(mode === 'tour') {
@@ -269,8 +242,8 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         L.geoJSON(geoData, {
             style: f => {
                 const n = f.properties.name || "";
-                let c = getAreaColor(n); // 复用颜色逻辑
-                if(c === "#666") c = "#999"; // 默认边界颜色
+                let c = getAreaColor(n); 
+                if(c === "#666") c = "#999"; 
                 return { color: c, weight: 1, fillColor: c, fillOpacity: 0.1 };
             }
         }).addTo(layers.borders);
@@ -298,6 +271,7 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         card.className = 'spot-card';
         card.setAttribute('data-area', s.area);
         
+        // 图片处理，若无图片则使用占位符
         const imgSrc = s.image ? s.image : 'https://via.placeholder.com/80?text=Loudi';
         const baikeUrl = `https://baike.baidu.com/item/${s.name}`;
 
