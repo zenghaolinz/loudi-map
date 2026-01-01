@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图编辑器</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: "Microsoft YaHei", sans-serif; overflow: hidden; }
+        #map { width: 100%; height: 100%; cursor: grab; }
+        #map.adding-mode { cursor: crosshair !important; }
+        
+        #editor-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 340px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        h3 { margin: 0 0 5px 0; color: #333; font-size: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        .section-title { font-size: 12px; font-weight: bold; color: #666; margin-top: 5px; }
+        
+        .input-group { display: flex; gap: 5px; margin-bottom: 5px; }
+        input, select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
+        
+        button { padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-search { background: #3b82f6; width: 100%; }
+        .btn-add { background: #f59e0b; width: 100%; }
+        .btn-add.active { background: #d97706; }
+        .btn-export { background: #10b981; margin-top: 10px; }
+        .btn-export:hover { background: #059669; }
+
+        .status-bar { font-size: 12px; color: #555; background: #f3f4f6; padding: 8px; border-radius: 4px; }
+        .highlight { color: #d946ef; font-weight: bold; }
+        .new-tag { color: #f59e0b; font-weight: bold; }
+
+        textarea { width: 100%; height: 120px; resize: vertical; font-size: 12px; font-family: monospace; border: 1px solid #ccc; border-radius: 4px; padding: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="editor-panel">
+    <h3>地图编辑器</h3>
+    
+    <div class="section-title">查找现有景点</div>
+    <div class="input-group">
+        <input type="text" id="search-input" placeholder="输入名字查找..." onkeyup="if(event.key==='Enter') searchSpot()">
+        <button class="btn-search" style="width: auto;" onclick="searchSpot()">查找</button>
+    </div>
+
+    <hr style="border:0; border-top:1px dashed #ccc; width:100%;">
+
+    <div class="section-title">新增景点</div>
+    <div class="input-group">
+        <input type="text" id="new-name" placeholder="景点名称">
+        <input type="text" id="new-area" placeholder="所属城市" list="city-list">
+        <datalist id="city-list">
+            <option value="长沙"><option value="株洲"><option value="湘潭"><option value="衡阳"><option value="邵阳">
+            <option value="岳阳"><option value="常德"><option value="张家界"><option value="益阳"><option value="郴州">
+            <option value="怀化"><option value="湘西"><option value="永州"><option value="娄底"><option value="双峰"><option value="新化">
+        </datalist>
+    </div>
+    <button id="btn-add-mode" class="btn-add" onclick="toggleAddMode()">点击此处开启新增模式</button>
+    
+    <div class="status-bar" id="status">
+        现有景点: <span class="highlight" id="count">0</span> 个<br>
+        本次新增: <span class="new-tag" id="new-count">0</span> 个<br>
+        <span id="tip" style="color:#888;">提示: 拖动图标修正位置</span>
+    </div>
+    
+    <button class="btn-export" onclick="exportData()">生成代码</button>
+    <textarea id="result-area" placeholder="代码生成区"></textarea>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/data.js"></script>
+<script src="js/geo-data.js"></script> 
+
+<script>
+    // 初始化地图
+    const map = L.map('map').setView([27.7017, 111.9963], 9);
+    
+    L.tileLayer('https://webrd02.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+        subdomains: ["01", "02", "03", "04"], attribution: '© 高德地图'
+    }).addTo(map);
+
+    // 加载辅助边界
+    if (typeof hunanGeoData !== 'undefined') {
+        L.geoJSON(hunanGeoData, { style: { color: "#3b82f6", fillOpacity: 0.05, weight: 1 } }).addTo(map);
+    }
+
+    const markers = {}; 
+    let isAdding = false; 
+    let newSpotsAdded = []; 
+
+    const cityColors = {
+        "长沙": "#ef4444", "株洲": "#3b82f6", "湘潭": "#dc2626", "衡阳": "#8b5cf6",
+        "邵阳": "#06b6d4", "岳阳": "#10b981", "常德": "#f472b6", "张家界": "#0d9488",
+        "益阳": "#84cc16", "郴州": "#6366f1", "怀化": "#f59e0b", "湘西": "#a855f7",
+        "娄底": "#d946ef", "永州": "#666"
+    };
+    function getColor(area) {
+        for (let k in cityColors) { if (area.includes(k)) return cityColors[k]; }
+        return "#333";
+    }
+
+    // 添加标记到地图
+    function addMarkerToMap(s, isNew = false) {
+        const color = isNew ? "#f59e0b" : getColor(s.area);
+        const border = isNew ? "3px solid red" : "2px solid white";
+        
+        const myIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background:${color}; width:14px; height:14px; border-radius:50%; border:${border}; box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>
+                   <div style="position:absolute; top:-20px; left:-50px; width:100px; text-align:center; font-size:12px; font-weight:bold; color:#333; text-shadow:1px 1px 0 #fff;">${s.name}</div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+
+        const m = L.marker([s.lat, s.lng], { 
+            icon: myIcon,
+            draggable: true,
+            title: s.name 
+        }).addTo(map);
+
+        // 拖动更新坐标
+        m.on('dragend', function(e) {
+            const newPos = e.target.getLatLng();
+            s.lat = parseFloat(newPos.lat.toFixed(4));
+            s.lng = parseFloat(newPos.lng.toFixed(4));
+            
+            e.target.bindTooltip(`已更新: ${s.lat}, ${s.lng}`, {permanent:true, direction:'top'}).openTooltip();
+            setTimeout(() => e.target.closeTooltip(), 1500);
+        });
+
+        m.bindPopup(`<b>${s.name}</b><br>${s.area}`);
+        markers[s.name] = m;
+    }
+
+    // 初始化现有标记
+    if (typeof spots !== 'undefined') {
+        document.getElementById('count').innerText = spots.length;
+        spots.forEach(s => addMarkerToMap(s));
+    }
+
+    // 搜索功能
+    function searchSpot() {
+        const keyword = document.getElementById('search-input').value.trim();
+        if (!keyword) return;
+        for (let name in markers) {
+            if (name.includes(keyword)) {
+                const m = markers[name];
+                map.flyTo(m.getLatLng(), 15);
+                m.openPopup();
+                return;
+            }
+        }
+        alert("未找到该景点");
+    }
+
+    // 切换新增模式
+    function toggleAddMode() {
+        const name = document.getElementById('new-name').value.trim();
+        const area = document.getElementById('new-area').value.trim();
+        
+        if (!name || !area) {
+            alert("请先输入景点名称和所属城市");
+            return;
+        }
+
+        isAdding = !isAdding;
+        const btn = document.getElementById('btn-add-mode');
+        const mapDiv = document.getElementById('map');
+        const tip = document.getElementById('tip');
+
+        if (isAdding) {
+            btn.classList.add('active');
+            btn.innerText = "取消新增 (或点击地图添加)";
+            mapDiv.classList.add('adding-mode');
+            tip.innerHTML = "<span style='color:red; font-weight:bold;'>请在地图上点击位置</span>";
+        } else {
+            btn.classList.remove('active');
+            btn.innerText = "点击此处开启新增模式";
+            mapDiv.classList.remove('adding-mode');
+            tip.innerText = "提示: 拖动图标修正位置";
+        }
+    }
+
+    // 地图点击事件
+    map.on('click', function(e) {
+        if (!isAdding) return;
+
+        const name = document.getElementById('new-name').value.trim();
+        const area = document.getElementById('new-area').value.trim();
+
+        const newSpot = {
+            "name": name,
+            "lat": parseFloat(e.latlng.lat.toFixed(4)),
+            "lng": parseFloat(e.latlng.lng.toFixed(4)),
+            "area": area,
+            "icon": "📍",
+            "tags": "新增",
+            "image": "", 
+            "desc": `位于${area}的${name}`
+        };
+
+        addMarkerToMap(newSpot, true);
+        spots.push(newSpot);
+        newSpotsAdded.push(newSpot);
+        
+        document.getElementById('new-count').innerText = newSpotsAdded.length;
+        document.getElementById('count').innerText = spots.length;
+        
+        isAdding = false;
+        toggleAddMode(); 
+        document.getElementById('new-name').value = '';
+    });
+
+    // 导出代码
+    function exportData() {
+        const area = document.getElementById('result-area');
+        area.style.display = 'block';
+        
+        let jsonStr = JSON.stringify(spots, null, 4);
+        let finalOutput = `// 景点数据配置\nconst spots = ${jsonStr};`;
+        
+        area.value = finalOutput;
+        area.select();
+        
+        if(navigator.clipboard) {
+            navigator.clipboard.writeText(finalOutput).then(() => {
+                alert("代码已复制，请覆盖 js/data.js");
+            }).catch(() => {
+                alert("请全选复制下方内容，覆盖 js/data.js");
+            });
+        } else {
+            alert("请全选复制下方内容，覆盖 js/data.js");
+        }
+    }
+</script>
+
+</body>
+</html>
