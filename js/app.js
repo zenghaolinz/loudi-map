@@ -27,6 +27,43 @@ L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 // ===========================================
 // 2. 数据与全局变量
 // ===========================================
+
+// --- 🎨 城市颜色配置 (不含永州) ---
+// 这里的键名对应 geojson 或 data.js 中的 area/name 字段
+const cityColors = {
+    "长沙": "#ef4444", // 红色
+    "株洲": "#3b82f6", // 蓝色
+    "湘潭": "#dc2626", // 深红
+    "衡阳": "#8b5cf6", // 紫色
+    "邵阳": "#06b6d4", // 青色
+    "岳阳": "#10b981", // 翠绿
+    "常德": "#f472b6", // 粉色
+    "张家界": "#0d9488", // 蓝绿
+    "益阳": "#84cc16", // 黄绿
+    "郴州": "#6366f1", // 靛蓝
+    "怀化": "#f59e0b", // 琥珀
+    "湘西": "#a855f7", // 紫罗兰
+    
+    // 娄底各区县原有配色
+    "娄底": "#d946ef",
+    "新化": "#8b5cf6",
+    "冷水江": "#f97316",
+    "涟源": "#10b981",
+    "双峰": "#3b82f6",
+    "娄星": "#ef4444"
+};
+
+// 辅助函数：根据名字获取颜色
+// 如果找不到匹配的城市（如永州），返回默认灰色 #666
+function getAreaColor(name) {
+    if (!name) return "#666";
+    // 优先匹配完整城市名
+    for (let key in cityColors) {
+        if (name.includes(key)) return cityColors[key];
+    }
+    return "#666"; 
+}
+
 const layers = { 
     spots: L.layerGroup().addTo(map), 
     borders: L.layerGroup().addTo(map) 
@@ -49,6 +86,7 @@ loudiCenterMarker.on('click', () => {
     toggleRegion();
 });
 
+// 加载娄底详细数据
 fetch('loudi.json')
     .then(r => r.json())
     .then(d => {
@@ -57,6 +95,7 @@ fetch('loudi.json')
     })
     .catch(e => console.error(e));
 
+// 加载湖南全省数据
 fetch('hunan.json')
     .then(r => r.json())
     .then(d => {
@@ -96,6 +135,7 @@ function toggleRegion() {
     const btn = scopeControlBtn; 
 
     if (!isHunanMode) {
+        // --- 进入湖南全省模式 ---
         isHunanMode = true;
         btn.innerHTML = '🏠 返回娄底';
         
@@ -107,27 +147,41 @@ function toggleRegion() {
         L.geoJSON(hunanData, {
             style: f => {
                 const name = f.properties.name || "";
-                if (name.includes("娄底")) {
-                    return { color: "#d946ef", weight: 2, fillColor: "#d946ef", fillOpacity: 0.7 };
-                } else {
+                // 获取对应颜色，如果不是指定城市（如永州），则返回默认
+                const color = getAreaColor(name);
+                
+                // 永州或未定义城市显示为暗色背景
+                if (color === "#666") {
                     return { color: "#fff", weight: 1, fillColor: "#1e293b", fillOpacity: 0.5 };
+                } else {
+                    return { color: color, weight: 2, fillColor: color, fillOpacity: 0.6 };
                 }
             },
             onEachFeature: function(feature, layer) {
-                const name = feature.properties.name;
+                const name = feature.properties.name || "";
+                const baseColor = getAreaColor(name);
+                
                 layer.bindTooltip(name, { sticky: true, direction: 'center', className: 'city-label' });
                 
                 layer.on('mouseover', function() {
-                    this.setStyle({ fillOpacity: 0.8, color: "#facc15", weight: 2 }); 
+                    // 高亮效果
+                    if(baseColor !== "#666") {
+                        this.setStyle({ fillOpacity: 0.8, color: "#facc15", weight: 2 });
+                    }
                 });
+                
                 layer.on('mouseout', function() {
-                    this.setStyle({ 
-                        fillOpacity: name.includes("娄底") ? 0.7 : 0.5,
-                        color: name.includes("娄底") ? "#d946ef" : "#fff",
-                        weight: name.includes("娄底") ? 2 : 1
-                    });
+                    // 恢复原样
+                    if(baseColor !== "#666") {
+                        this.setStyle({ 
+                            fillOpacity: 0.6,
+                            color: baseColor,
+                            weight: 2
+                        });
+                    }
                 });
 
+                // 点击娄底区域可以返回详细视图
                 if (name.includes("娄底")) {
                     layer.on('click', function() { toggleRegion(); });
                     layer.options.cursor = 'pointer'; 
@@ -138,6 +192,7 @@ function toggleRegion() {
         map.flyTo([27.5, 111.8], 7);
 
     } else {
+        // --- 返回娄底模式 ---
         isHunanMode = false;
         btn.innerHTML = '🌏 湖南全省';
         map.removeLayer(loudiCenterMarker);
@@ -153,6 +208,7 @@ window.setMode = function(mode) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     
+    // 如果在全省模式下切换TAB，先切回娄底模式（或者根据需求保留）
     if (isHunanMode) toggleRegion();
 
     if(mode === 'tour') {
@@ -179,12 +235,11 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
     renderTour(currentFilter, currentBtn, e.target.value);
 });
 
-// 修改点：侧边栏收起逻辑
+// 侧边栏收起逻辑
 window.toggleSidebar = function() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('collapsed');
     
-    // 关键修复：等待动画结束后(300ms)，告诉地图重新适应大小
     setTimeout(() => {
         map.invalidateSize();
     }, 300);
@@ -209,21 +264,19 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
     layers.borders.clearLayers();
     document.getElementById('spotList').innerHTML = '';
 
+    // 渲染娄底区县边界 (仅在娄底模式下)
     if(geoData) {
         L.geoJSON(geoData, {
             style: f => {
                 const n = f.properties.name || "";
-                let c = "#999";
-                if(n.includes("新化")) c="#8b5cf6";
-                else if(n.includes("冷水江")) c="#f97316";
-                else if(n.includes("涟源")) c="#10b981";
-                else if(n.includes("双峰")) c="#3b82f6";
-                else if(n.includes("娄星")) c="#ef4444";
+                let c = getAreaColor(n); // 复用颜色逻辑
+                if(c === "#666") c = "#999"; // 默认边界颜色
                 return { color: c, weight: 1, fillColor: c, fillOpacity: 0.1 };
             }
         }).addTo(layers.borders);
     }
 
+    // 渲染景点
     spots.forEach(s => {
         // 过滤逻辑
         if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
@@ -237,12 +290,8 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
             if (!matchName && !matchDesc && !matchArea) return;
         }
 
-        let c = "#666";
-        if(s.area.includes("新化")) c="#8b5cf6";
-        if(s.area.includes("双峰")) c="#3b82f6";
-        if(s.area.includes("冷水江")) c="#f97316";
-        if(s.area.includes("涟源")) c="#10b981";
-        if(s.area.includes("娄星")) c="#ef4444";
+        // 获取颜色
+        let c = getAreaColor(s.area);
         
         // 构造卡片
         const card = document.createElement('div');
@@ -266,15 +315,15 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         card.onclick = () => {
             map.flyTo([s.lat, s.lng], 14); 
             m.openPopup();
-            // 在移动端，点击卡片后自动收起侧边栏，方便看地图
+            // 移动端优化
             if (window.innerWidth < 768) {
                 document.querySelector('.sidebar').classList.add('collapsed');
-                // 同样需要触发resize
                 setTimeout(() => map.invalidateSize(), 300);
             }
         };
         document.getElementById('spotList').appendChild(card);
 
+        // 添加地图标记
         const m = L.marker([s.lat, s.lng], { draggable: false }).addTo(layers.spots);
         m.bindPopup(`
             <div class="pop-head" style="background:${c}">${s.name}</div>
@@ -286,6 +335,7 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         `);
     });
     
+    // 如果没有搜索关键词且在默认视图，复位地图
     if(!isHunanMode && (filter === 'all' || filter === '高校' || filter === '学府') && !keyword) {
         map.setView([27.7017, 111.9963], 9);
     }
