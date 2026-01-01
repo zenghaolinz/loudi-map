@@ -14,7 +14,7 @@ const satMap = L.tileLayer('https://webst02.is.autonavi.com/appmaptile?style=6&x
 const map = L.map('map', { 
     zoomControl: false,
     layers: [normalMap] 
-}).setView([27.7017, 111.9963], 9);
+}).setView([27.5, 111.8], 7); // 初始视角改为全省
 
 L.control.zoom({ position: 'topright' }).addTo(map);
 
@@ -25,98 +25,27 @@ const baseMaps = {
 L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
 // ===========================================
-// 2. 城市配置数据 (标题、Slogan、坐标)
+// 2. 城市配置数据
 // ===========================================
-
 const cityMeta = {
-    "湖南": {
-        title: "湖南全域导览",
-        sub: "锦绣潇湘 · 伟人故里 · 快乐大本营",
-        center: [27.5, 111.8],
-        zoom: 7
-    },
-    "娄底": {
-        title: "娄底全域导览",
-        sub: "湘中明珠 · 蚩尤故里 · 湘军摇篮",
-        center: [27.7017, 111.9963],
-        zoom: 9
-    },
-    "长沙": {
-        title: "长沙全域导览",
-        sub: "星城长沙 · 娱乐之都 · 千年学府",
-        center: [28.2282, 112.9388],
-        zoom: 10
-    },
-    "株洲": {
-        title: "株洲全域导览",
-        sub: "动力之都 · 神农福地 · 轨道交通",
-        center: [27.8308, 113.1323],
-        zoom: 10
-    },
-    "湘潭": {
-        title: "湘潭全域导览",
-        sub: "伟人故里 · 红色圣地 · 莲城湘潭",
-        center: [27.8297, 112.9440],
-        zoom: 10
-    },
-    "衡阳": {
-        title: "衡阳全域导览",
-        sub: "雁城衡阳 · 寿岳南山 · 抗战名城",
-        center: [26.8968, 112.572],
-        zoom: 9
-    },
-    "邵阳": {
-        title: "邵阳全域导览",
-        sub: "宝庆邵阳 · 奇美崀山 · 魏源故居",
-        center: [27.2389, 111.469],
-        zoom: 9
-    },
-    "岳阳": {
-        title: "岳阳全域导览",
-        sub: "洞庭天下水 · 岳阳天下楼 · 鱼米之乡",
-        center: [29.356, 113.132],
-        zoom: 9
-    },
-    "常德": {
-        title: "常德全域导览",
-        sub: "桃花源里 · 柳叶湖畔 · 诗画常德",
-        center: [29.031, 111.698],
-        zoom: 9
-    },
-    "张家界": {
-        title: "张家界导览",
-        sub: "国际张 · 奇峰三千 · 秀水八百",
-        center: [29.117, 110.478],
-        zoom: 9
-    },
-    "益阳": {
-        title: "益阳全域导览",
-        sub: "银城益阳 · 羽毛球乡 · 黑茶之源",
-        center: [28.553, 112.355],
-        zoom: 9
-    },
-    "郴州": {
-        title: "郴州全域导览",
-        sub: "林中之城 · 雾漫东江 · 粤港澳后花园",
-        center: [25.770, 113.014],
-        zoom: 9
-    },
-    "怀化": {
-        title: "怀化全域导览",
-        sub: "鹤城怀化 · 黔湘要冲 · 第一古商城",
-        center: [27.550, 109.998],
-        zoom: 9
-    },
-    "湘西": {
-        title: "湘西州导览",
-        sub: "神秘湘西 · 凤凰古城 · 苗寨风情",
-        center: [28.312, 109.739],
-        zoom: 9
-    },
+    "湖南": { title: "湖南全域导览", sub: "锦绣潇湘 · 伟人故里 · 快乐大本营", center: [27.5, 111.8], zoom: 7 },
+    "娄底": { title: "娄底全域导览", sub: "湘中明珠 · 蚩尤故里 · 湘军摇篮", center: [27.7017, 111.9963], zoom: 9 },
+    "长沙": { title: "长沙全域导览", sub: "星城长沙 · 娱乐之都 · 千年学府", center: [28.2282, 112.9388], zoom: 10 },
+    "株洲": { title: "株洲全域导览", sub: "动力之都 · 神农福地 · 轨道交通", center: [27.8308, 113.1323], zoom: 10 },
+    "湘潭": { title: "湘潭全域导览", sub: "伟人故里 · 红色圣地 · 莲城湘潭", center: [27.8297, 112.9440], zoom: 10 },
+    "衡阳": { title: "衡阳全域导览", sub: "雁城衡阳 · 寿岳南山 · 抗战名城", center: [26.8968, 112.572], zoom: 9 },
+    "邵阳": { title: "邵阳全域导览", sub: "宝庆邵阳 · 奇美崀山 · 魏源故居", center: [27.2389, 111.469], zoom: 9 },
+    "岳阳": { title: "岳阳全域导览", sub: "洞庭天下水 · 岳阳天下楼 · 鱼米之乡", center: [29.356, 113.132], zoom: 9 },
+    "常德": { title: "常德全域导览", sub: "桃花源里 · 柳叶湖畔 · 诗画常德", center: [29.031, 111.698], zoom: 9 },
+    "张家界": { title: "张家界导览", sub: "国际张 · 奇峰三千 · 秀水八百", center: [29.117, 110.478], zoom: 9 },
+    "益阳": { title: "益阳全域导览", sub: "银城益阳 · 羽毛球乡 · 黑茶之源", center: [28.553, 112.355], zoom: 9 },
+    "郴州": { title: "郴州全域导览", sub: "林中之城 · 雾漫东江 · 粤港澳后花园", center: [25.770, 113.014], zoom: 9 },
+    "怀化": { title: "怀化全域导览", sub: "鹤城怀化 · 黔湘要冲 · 第一古商城", center: [27.550, 109.998], zoom: 9 },
+    "湘西": { title: "湘西州导览", sub: "神秘湘西 · 凤凰古城 · 苗寨风情", center: [28.312, 109.739], zoom: 9 },
     "永州": { title: "", sub: "", center: [0,0], zoom: 1 } 
 };
 
-// --- 🎨 颜色配置 ---
+// 颜色配置
 const cityColors = {
     "长沙": "#ef4444", "株洲": "#3b82f6", "湘潭": "#dc2626", "衡阳": "#8b5cf6",
     "邵阳": "#06b6d4", "岳阳": "#10b981", "常德": "#f472b6", "张家界": "#0d9488",
@@ -133,13 +62,12 @@ function getAreaColor(name) {
     return "#666"; 
 }
 
-// --- 🎨 自动配色辅助工具 (新增) ---
+// 自动配色辅助
 const colorPalette = [
     "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981", 
     "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", 
     "#f43f5e", "#ec4899", "#14b8a6", "#facc15"
 ];
-
 function getAutoColor(name) {
     if (!name) return "#999";
     let hash = 0;
@@ -159,13 +87,11 @@ const layers = {
     borders: L.layerGroup().addTo(map) 
 };
 
-// 读取 geo-data.js 中的数据变量
 let geoData = (typeof loudiGeoData !== 'undefined') ? loudiGeoData : null;
 let hunanData = (typeof hunanGeoData !== 'undefined') ? hunanGeoData : null;
 
-// 当前状态变量
-let currentMode = 'city'; 
-let currentCityName = '娄底'; 
+let currentMode = 'province'; // 默认从全省开始
+let currentCityName = '湖南'; 
 let currentFilter = 'all'; 
 let currentBtn = null;
 let scopeControlBtn = null;
@@ -173,14 +99,68 @@ let scopeControlBtn = null;
 // 初始化入口
 if (geoData && hunanData) {
     setTimeout(() => {
-        enterCityMode('娄底'); 
+        // 👇 修改点：初始直接调用全省模式
+        enterProvinceMode();
     }, 100);
 } else {
     alert("⚠️ 错误：找不到地图数据，请检查 js/geo-data.js 文件！");
 }
 
 // ===========================================
-// 4. 核心模式切换逻辑
+// 4. 动态按钮生成逻辑 (新增)
+// ===========================================
+
+function updateFilterButtons() {
+    const container = document.getElementById('filterContainer');
+    if (!container) return;
+    container.innerHTML = ''; // 清空现有按钮
+
+    // 1. 添加“全部”按钮
+    const allBtn = document.createElement('div');
+    allBtn.className = 'tag-btn active';
+    allBtn.innerText = '全部';
+    allBtn.onclick = function() { filterSpots('all', this); };
+    container.appendChild(allBtn);
+
+    // 2. 添加“高校/学府”按钮 (通用)
+    const schoolBtn = document.createElement('div');
+    schoolBtn.className = 'tag-btn';
+    schoolBtn.innerText = '🎓 高校';
+    schoolBtn.onclick = function() { filterSpots('高校', this); };
+    container.appendChild(schoolBtn);
+
+    // 3. 根据模式生成特定的区域按钮
+    if (currentMode === 'province') {
+        // --- 全省模式：显示各市按钮 ---
+        const cities = ["长沙", "株洲", "湘潭", "衡阳", "邵阳", "岳阳", "常德", "张家界", "益阳", "郴州", "怀化", "湘西", "娄底"];
+        cities.forEach(city => {
+            const btn = document.createElement('div');
+            btn.className = 'tag-btn';
+            btn.innerText = city;
+            // 点击城市按钮，直接过滤出该市景点
+            btn.onclick = function() { filterSpots(city, this); };
+            container.appendChild(btn);
+        });
+
+    } else if (currentCityName === '娄底') {
+        // --- 娄底模式：显示区县按钮 ---
+        const districts = ["娄星", "双峰", "新化", "冷水江", "涟源"];
+        districts.forEach(dist => {
+            const btn = document.createElement('div');
+            btn.className = 'tag-btn';
+            btn.innerText = dist;
+            btn.onclick = function() { filterSpots(dist, this); };
+            container.appendChild(btn);
+        });
+    } else {
+        // --- 其他城市模式 ---
+        // 如果有其他城市的区县数据，可以在这里扩展
+        // 目前暂不生成细分按钮，或者可以根据 spots 数据动态提取
+    }
+}
+
+// ===========================================
+// 5. 核心模式切换逻辑
 // ===========================================
 
 // 切换到【省份概览模式】
@@ -189,12 +169,16 @@ function enterProvinceMode() {
     currentCityName = '湖南';
     
     updateHeaderText('湖南');
-    scopeControlBtn.innerHTML = '🏠 返回当前城市'; 
+    if (scopeControlBtn) scopeControlBtn.innerHTML = '🏠 返回当前城市'; 
     
+    // 1. 更新按钮
+    updateFilterButtons();
+
+    // 2. 清理地图
     layers.spots.clearLayers();
     layers.borders.clearLayers();
-    document.getElementById('spotList').innerHTML = '<div style="padding:20px; text-align:center; color:#888;">请在地图上点击城市以查看详情 👆</div>';
 
+    // 3. 渲染全省地图
     L.geoJSON(hunanData, {
         style: f => {
             const name = f.properties.name || "";
@@ -224,6 +208,9 @@ function enterProvinceMode() {
         }
     }).addTo(layers.borders);
 
+    // 4. 👇 修改点：在全省模式下，也调用渲染景点（显示所有）
+    renderTour('all', null);
+
     const cfg = cityMeta["湖南"];
     map.flyTo(cfg.center, cfg.zoom);
 }
@@ -240,8 +227,12 @@ function enterCityMode(cityName) {
     currentCityName = key;
 
     updateHeaderText(key);
-    scopeControlBtn.innerHTML = '🌏 湖南全省';
+    if (scopeControlBtn) scopeControlBtn.innerHTML = '🌏 湖南全省';
     
+    // 1. 更新按钮
+    updateFilterButtons();
+
+    // 2. 清理并准备渲染
     layers.borders.clearLayers();
     layers.spots.clearLayers();
 
@@ -249,12 +240,11 @@ function enterCityMode(cityName) {
     const detailData = (typeof cityDetailData !== 'undefined') ? cityDetailData[key] : null;
 
     if (detailData) {
-        // --- 方案 A：有详细县级数据 ---
         L.geoJSON(detailData, {
             style: f => {
                 const n = f.properties.name || "";
                 let c = getAreaColor(n);
-                if (c === "#666") c = getAutoColor(n); // 自动配色
+                if (c === "#666") c = getAutoColor(n);
                 return { color: c, weight: 2, fillColor: c, fillOpacity: 0.1 };
             },
             onEachFeature: function(feature, layer) {
@@ -265,7 +255,6 @@ function enterCityMode(cityName) {
             }
         }).addTo(layers.borders);
     } else {
-        // --- 方案 B：没有详细数据 ---
         const cityFeature = hunanData.features.find(f => f.properties.name.includes(key));
         if (cityFeature) {
             L.geoJSON(cityFeature, {
@@ -274,7 +263,7 @@ function enterCityMode(cityName) {
         }
     }
 
-    renderTour(currentFilter, currentBtn, document.getElementById('searchInput').value);
+    renderTour('all', null);
 
     const cfg = cityMeta[key];
     if (cfg) map.flyTo(cfg.center, cfg.zoom);
@@ -290,7 +279,7 @@ function updateHeaderText(key) {
 }
 
 // ===========================================
-// 5. 控件与按钮
+// 6. 控件与搜索逻辑
 // ===========================================
 const ScopeControl = L.Control.extend({
     options: { position: 'topleft' }, 
@@ -317,19 +306,11 @@ const ScopeControl = L.Control.extend({
 });
 map.addControl(new ScopeControl());
 
-// ===========================================
-// 6. 搜索与渲染列表逻辑
-// ===========================================
-
 window.setMode = function(mode) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     
-    if (currentMode === 'province') {
-        enterCityMode(currentCityName === '湖南' ? '娄底' : currentCityName);
-    }
-
-    if(mode === 'tour') {
+    if (mode === 'tour') {
         document.querySelector('.tab:nth-child(1)').classList.add('active');
         document.getElementById('view-tour').classList.add('active');
         document.getElementById('timeline').classList.remove('show');
@@ -352,7 +333,10 @@ window.toggleSidebar = function() {
     setTimeout(() => { map.invalidateSize(); }, 300);
 }
 
-// 核心渲染函数 (含自动图片抓取)
+// ===========================================
+// 7. 渲染函数 (支持全省显示)
+// ===========================================
+
 window.renderTour = function(filter = 'all', btn, keyword = '') {
     currentFilter = filter;
     currentBtn = btn;
@@ -361,6 +345,7 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
     keyword = keyword.trim();
 
     if(btn) {
+        // 这里的 active 样式处理移交给 updateFilterButtons 可能会更好，但暂时保留兼容
         document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
@@ -368,23 +353,39 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
     layers.spots.clearLayers();
     document.getElementById('spotList').innerHTML = '';
 
-    // 筛选当前城市的景点
+    // 👇 筛选逻辑核心修改
     const citySpots = spots.filter(s => {
+        // 1. 如果是全省模式
+        if (currentMode === 'province') {
+            // 如果筛选是 'all' 或 '高校'，显示所有（排除永州等不展示的）
+            if (filter === 'all' || filter === '高校' || filter === '学府') {
+                return true; 
+            }
+            // 如果筛选是具体城市名（如点击了"长沙"按钮）
+            return s.area.includes(filter);
+        }
+        
+        // 2. 如果是娄底模式
         if (currentCityName === '娄底') {
             return ["娄星", "双峰", "新化", "冷水江", "涟源"].some(d => s.area.includes(d));
         }
+        
+        // 3. 其他城市模式
         return s.area.includes(currentCityName);
     });
 
     if (citySpots.length === 0) {
-        document.getElementById('spotList').innerHTML = `<div style="padding:20px;color:#999;text-align:center;">${currentCityName} 暂无收录数据<br><small>欢迎补充</small></div>`;
+        document.getElementById('spotList').innerHTML = `<div style="padding:20px;color:#999;text-align:center;">暂无相关景点数据<br><small>欢迎补充</small></div>`;
         return;
     }
 
     citySpots.forEach(s => {
         if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
         if(filter === '学府' && (!s.tags || !s.tags.includes('学府'))) return;
-        if(filter !== 'all' && filter !== '高校' && filter !== '学府' && s.area.indexOf(filter) === -1) return;
+        
+        // 在城市/区县按钮过滤逻辑中，上面 spots.filter 已经处理了大半，这里做二次校验
+        // 如果不是全省模式下的特殊城市筛选，需要校验 area
+        if (currentMode !== 'province' && filter !== 'all' && filter !== '高校' && filter !== '学府' && s.area.indexOf(filter) === -1) return;
 
         if (keyword) {
             const matchName = s.name.includes(keyword);
@@ -394,7 +395,7 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
 
         let c = getAreaColor(s.area);
         
-        // --- 智能图片逻辑 ---
+        // 图片逻辑
         let imgSrc = s.image; 
         if (!imgSrc) {
             const searchKey = s.area + s.name + "风景";
@@ -442,6 +443,7 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
 
 window.filterSpots = renderTour;
 
+// 历史逻辑保留
 window.loadHist = function(idx) {
     document.querySelectorAll('.t-btn').forEach((b, i) => b.classList.toggle('active', i===idx));
     const d = historyEras[idx];
