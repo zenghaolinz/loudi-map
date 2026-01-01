@@ -28,7 +28,6 @@ L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 // 2. 城市配置数据 (标题、Slogan、坐标)
 // ===========================================
 
-// 这里的键名必须与 hunan.json 或 spots 数据中的 area 名称匹配
 const cityMeta = {
     "湖南": {
         title: "湖南全域导览",
@@ -114,11 +113,10 @@ const cityMeta = {
         center: [28.312, 109.739],
         zoom: 9
     },
-    // 永州留空或设置默认，代码中会逻辑屏蔽
     "永州": { title: "", sub: "", center: [0,0], zoom: 1 } 
 };
 
-// 城市颜色配置
+// --- 🎨 颜色配置 ---
 const cityColors = {
     "长沙": "#ef4444", "株洲": "#3b82f6", "湘潭": "#dc2626", "衡阳": "#8b5cf6",
     "邵阳": "#06b6d4", "岳阳": "#10b981", "常德": "#f472b6", "张家界": "#0d9488",
@@ -135,6 +133,23 @@ function getAreaColor(name) {
     return "#666"; 
 }
 
+// --- 🎨 自动配色辅助工具 (新增) ---
+const colorPalette = [
+    "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981", 
+    "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", 
+    "#f43f5e", "#ec4899", "#14b8a6", "#facc15"
+];
+
+function getAutoColor(name) {
+    if (!name) return "#999";
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colorPalette.length;
+    return colorPalette[index];
+}
+
 // ===========================================
 // 3. 全局变量与初始化
 // ===========================================
@@ -145,24 +160,20 @@ const layers = {
 };
 
 // 读取 geo-data.js 中的数据变量
-let geoData = (typeof loudiGeoData !== 'undefined') ? loudiGeoData : null; // 娄底详细数据
-let hunanData = (typeof hunanGeoData !== 'undefined') ? hunanGeoData : null; // 湖南全省数据
+let geoData = (typeof loudiGeoData !== 'undefined') ? loudiGeoData : null;
+let hunanData = (typeof hunanGeoData !== 'undefined') ? hunanGeoData : null;
 
 // 当前状态变量
-let currentMode = 'city'; // 'city' (某市详细模式) 或 'province' (全省概览模式)
-let currentCityName = '娄底'; // 默认为娄底
+let currentMode = 'city'; 
+let currentCityName = '娄底'; 
 let currentFilter = 'all'; 
 let currentBtn = null;
 let scopeControlBtn = null;
 
-// 定义娄底中心标记（仅在全省模式下显示）
-// 注意：现在这个标记逻辑可能需要改为通用，或者在全省模式下不显示单一标记，而是依靠区块点击
-const cityMarker = L.marker([0,0], { interactive: false }); // 占位
-
 // 初始化入口
 if (geoData && hunanData) {
     setTimeout(() => {
-        enterCityMode('娄底'); // 默认进入娄底
+        enterCityMode('娄底'); 
     }, 100);
 } else {
     alert("⚠️ 错误：找不到地图数据，请检查 js/geo-data.js 文件！");
@@ -177,21 +188,17 @@ function enterProvinceMode() {
     currentMode = 'province';
     currentCityName = '湖南';
     
-    // 1. 更新界面文字
     updateHeaderText('湖南');
-    scopeControlBtn.innerHTML = '🏠 返回当前城市'; // 按钮变为返回
+    scopeControlBtn.innerHTML = '🏠 返回当前城市'; 
     
-    // 2. 清理地图
     layers.spots.clearLayers();
     layers.borders.clearLayers();
     document.getElementById('spotList').innerHTML = '<div style="padding:20px; text-align:center; color:#888;">请在地图上点击城市以查看详情 👆</div>';
 
-    // 3. 渲染全省地图
     L.geoJSON(hunanData, {
         style: f => {
             const name = f.properties.name || "";
             const color = getAreaColor(name);
-            // 永州特殊处理：暗色
             if (name.includes("永州")) {
                 return { color: "#fff", weight: 1, fillColor: "#1e293b", fillOpacity: 0.5 };
             }
@@ -199,14 +206,10 @@ function enterProvinceMode() {
         },
         onEachFeature: function(feature, layer) {
             const name = feature.properties.name || "";
-            
-            // 绑定标签
             layer.bindTooltip(name, { sticky: true, direction: 'center', className: 'city-label' });
             
-            // 交互效果
-            if (!name.includes("永州")) { // 永州不可点击
+            if (!name.includes("永州")) { 
                 layer.options.cursor = 'pointer';
-                
                 layer.on('mouseover', function() {
                     this.setStyle({ fillOpacity: 0.8, color: "#facc15", weight: 3 });
                 });
@@ -214,8 +217,6 @@ function enterProvinceMode() {
                     const c = getAreaColor(name);
                     this.setStyle({ fillOpacity: 0.6, color: c, weight: 2 });
                 });
-                
-                // 点击进入城市
                 layer.on('click', function() {
                     enterCityMode(name);
                 });
@@ -223,43 +224,48 @@ function enterProvinceMode() {
         }
     }).addTo(layers.borders);
 
-    // 4. 视角飞向湖南中心
     const cfg = cityMeta["湖南"];
     map.flyTo(cfg.center, cfg.zoom);
 }
 
 // 切换到【单城市详细模式】
 function enterCityMode(cityName) {
-    // 处理名称匹配（例如 "长沙市" -> "长沙"）
     let key = "";
     for(let k in cityMeta) {
         if(cityName.includes(k)) { key = k; break; }
     }
-    if(!key || key === "湖南" || key === "永州") return; // 防止错误
+    if(!key || key === "湖南" || key === "永州") return;
 
     currentMode = 'city';
     currentCityName = key;
 
-    // 1. 更新界面
     updateHeaderText(key);
-    scopeControlBtn.innerHTML = '🌏 湖南全省'; // 按钮变为去全省
+    scopeControlBtn.innerHTML = '🌏 湖南全省';
     
-    // 2. 清理并准备渲染
     layers.borders.clearLayers();
     layers.spots.clearLayers();
 
-    // 3. 渲染边界
-    // 如果是娄底，我们有超高精度的 loudi.json (geoData)
-    if (key === '娄底') {
-        L.geoJSON(geoData, {
+    // 尝试获取详细数据
+    const detailData = (typeof cityDetailData !== 'undefined') ? cityDetailData[key] : null;
+
+    if (detailData) {
+        // --- 方案 A：有详细县级数据 ---
+        L.geoJSON(detailData, {
             style: f => {
                 const n = f.properties.name || "";
-                let c = getAreaColor(n); 
+                let c = getAreaColor(n);
+                if (c === "#666") c = getAutoColor(n); // 自动配色
                 return { color: c, weight: 2, fillColor: c, fillOpacity: 0.1 };
+            },
+            onEachFeature: function(feature, layer) {
+                const n = feature.properties.name || "";
+                layer.bindTooltip(n, { direction: 'center', className: 'city-label' });
+                layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.4, weight: 3 }); });
+                layer.on('mouseout', function() { this.setStyle({ fillOpacity: 0.1, weight: 2 }); });
             }
         }).addTo(layers.borders);
     } else {
-        // 其他城市，从 hunanData 中提取该城市的形状进行渲染
+        // --- 方案 B：没有详细数据 ---
         const cityFeature = hunanData.features.find(f => f.properties.name.includes(key));
         if (cityFeature) {
             L.geoJSON(cityFeature, {
@@ -268,12 +274,10 @@ function enterCityMode(cityName) {
         }
     }
 
-    // 4. 渲染该城市的景点
     renderTour(currentFilter, currentBtn, document.getElementById('searchInput').value);
 
-    // 5. 视角飞向城市中心
     const cfg = cityMeta[key];
-    map.flyTo(cfg.center, cfg.zoom);
+    if (cfg) map.flyTo(cfg.center, cfg.zoom);
 }
 
 // 辅助：更新标题栏
@@ -305,7 +309,6 @@ const ScopeControl = L.Control.extend({
             if (currentMode === 'city') {
                 enterProvinceMode();
             } else {
-                // 如果在全省模式点返回，则返回上一次浏览的城市，默认娄底
                 enterCityMode(currentCityName === '湖南' ? '娄底' : currentCityName);
             }
         }
@@ -322,7 +325,6 @@ window.setMode = function(mode) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     
-    // 如果在全省模式下切换TAB，切回当前城市模式
     if (currentMode === 'province') {
         enterCityMode(currentCityName === '湖南' ? '娄底' : currentCityName);
     }
@@ -340,19 +342,17 @@ window.setMode = function(mode) {
     }
 }
 
-// 监听搜索输入
 document.getElementById('searchInput').addEventListener('input', (e) => {
     renderTour(currentFilter, currentBtn, e.target.value);
 });
 
-// 侧边栏收起逻辑
 window.toggleSidebar = function() {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('collapsed');
     setTimeout(() => { map.invalidateSize(); }, 300);
 }
 
-// 核心渲染函数
+// 核心渲染函数 (含自动图片抓取)
 window.renderTour = function(filter = 'all', btn, keyword = '') {
     currentFilter = filter;
     currentBtn = btn;
@@ -365,17 +365,14 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         btn.classList.add('active');
     }
 
-    // 每次渲染先清空
     layers.spots.clearLayers();
     document.getElementById('spotList').innerHTML = '';
 
-    // ⚠️ 关键筛选：只显示当前城市的景点
+    // 筛选当前城市的景点
     const citySpots = spots.filter(s => {
-        // 如果当前城市是娄底，我们根据区县筛选（因为data.js里娄底的area是区县名）
         if (currentCityName === '娄底') {
             return ["娄星", "双峰", "新化", "冷水江", "涟源"].some(d => s.area.includes(d));
         }
-        // 其他城市，data.js里area直接就是城市名（如 "长沙"）
         return s.area.includes(currentCityName);
     });
 
@@ -385,13 +382,10 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
     }
 
     citySpots.forEach(s => {
-        // 标签/区域筛选逻辑
         if(filter === '高校' && (!s.tags || !s.tags.includes('高校'))) return;
         if(filter === '学府' && (!s.tags || !s.tags.includes('学府'))) return;
-        // 如果不是全部/高校/学府，则是按区域名筛选（主要针对娄底内部）
         if(filter !== 'all' && filter !== '高校' && filter !== '学府' && s.area.indexOf(filter) === -1) return;
 
-        // 关键词搜索
         if (keyword) {
             const matchName = s.name.includes(keyword);
             const matchDesc = s.desc.includes(keyword);
@@ -399,15 +393,23 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         }
 
         let c = getAreaColor(s.area);
-        const imgSrc = s.image ? s.image : 'https://via.placeholder.com/80?text=Image';
+        
+        // --- 智能图片逻辑 ---
+        let imgSrc = s.image; 
+        if (!imgSrc) {
+            const searchKey = s.area + s.name + "风景";
+            imgSrc = `https://tse2.mm.bing.net/th?q=${encodeURIComponent(searchKey)}&w=400&h=300&c=7&rs=1`;
+        }
+
         const baikeUrl = `https://baike.baidu.com/item/${s.name}`;
 
-        // 构造卡片
         const card = document.createElement('div');
         card.className = 'spot-card';
         card.setAttribute('data-area', s.area);
+        
         card.innerHTML = `
-            <img src="${imgSrc}" class="card-img" alt="${s.name}" onerror="this.src='https://via.placeholder.com/80?text=No+Img'">
+            <img src="${imgSrc}" class="card-img" alt="${s.name}" 
+                 onerror="this.src='https://via.placeholder.com/80?text=No+Img';this.onerror=null;">
             <div class="card-info">
                 <div class="card-title-row">
                     <span class="card-name" onclick="window.open('${baikeUrl}'); event.stopPropagation();" title="点击查看百科">${s.name}</span>
@@ -426,12 +428,11 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
         };
         document.getElementById('spotList').appendChild(card);
 
-        // 添加地图标记
         const m = L.marker([s.lat, s.lng], { draggable: false }).addTo(layers.spots);
         m.bindPopup(`
             <div class="pop-head" style="background:${c}">${s.name}</div>
             <div class="pop-body">
-                <img src="${imgSrc}" style="width:100%; border-radius:8px; margin-bottom:8px;">
+                <img src="${imgSrc}" style="width:100%; height:150px; object-fit:cover; border-radius:8px; margin-bottom:8px;" onerror="this.src='https://via.placeholder.com/200?text=No+Img'">
                 ${s.desc}
                 <a href="https://uri.amap.com/marker?position=${s.lng},${s.lat}&name=${s.name}" target="_blank" class="pop-link" style="background:${c}">🚀 导航去这里</a>
             </div>
@@ -441,7 +442,6 @@ window.renderTour = function(filter = 'all', btn, keyword = '') {
 
 window.filterSpots = renderTour;
 
-// 历史疆域逻辑（主要针对娄底，其他城市暂不支持或需扩展）
 window.loadHist = function(idx) {
     document.querySelectorAll('.t-btn').forEach((b, i) => b.classList.toggle('active', i===idx));
     const d = historyEras[idx];
@@ -452,7 +452,6 @@ window.loadHist = function(idx) {
     layers.spots.clearLayers();
     layers.borders.clearLayers();
 
-    // 历史模式主要演示娄底的变迁，所以使用 geoData
     if(geoData) {
         L.geoJSON(geoData, {
             style: f => {
